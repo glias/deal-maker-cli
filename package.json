@@ -1,0 +1,14 @@
+{
+  "name": "deal-maker-cli",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:glias/deal-maker-cli.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}
