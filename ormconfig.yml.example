@@ -1,0 +1,34 @@
+production:
+  type: sqlite
+  name: production
+  database: .db/deal_maker.sqlite3.production
+  entities:
+    - src/**/*.entity.ts
+    - lib/**/*.entity.js
+  migrations:
+    - migration/*.js
+  logging: false
+
+development:
+  type: sqlite
+  name: development
+  database: .db/deal_maker.sqlite3.development
+  entities:
+    - src/**/*.entity.ts
+    - lib/**/*.entity.js
+  migrations:
+    - migration/*.js
+  logging: true
+  logger: advanced-console
+  synchronize: true
+
+test:
+  type: sqlite
+  name: test
+  database: ':memory:'
+  entities:
+    - src/**/*.entity.ts
+    - lib/**/*.entity.js
+  migrations:
+    - migration/*.js
+  synchronize: true
