@@ -11,13 +11,24 @@ const start = () => {
   setVersion(program)
 
   /* set options */
-  // program.option(init.cmd, init.desc).option(run.cmd, run.desc)
 
   /* set commands */
-  const commandList = [init, run, config]
+  const commandList: Array<{
+    cmd: string
+    desc: string
+    options?: Record<string, Record<'option' | 'desc', string>>
+    exec: (...args: any[]) => void | Promise<void>
+  }> = [init, run, config]
   commandList.forEach(meta => {
-    program.command(meta.cmd).description(meta.desc).action(meta.exec)
+    const subCmd = program.command(meta.cmd)
+    if (meta.options) {
+      Object.values(meta.options).forEach(meta => {
+        subCmd.option(meta.option).description(meta.desc)
+      })
+    }
+    subCmd.description(meta.desc).action(meta.exec)
   })
+
   program.parse(process.argv)
 }
 
