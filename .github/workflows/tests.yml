@@ -1,0 +1,40 @@
+name: Unit Tests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  push:
+  pull_request:
+
+jobs:
+  default:
+    strategy:
+      matrix:
+        node: [12, 13, 14]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node
+        uses: actions/setup-node@v2-beta
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Restore
+        uses: actions/cache@v2
+        with:
+          path: |
+            node_modules
+            */*/node_modules
+          key: ${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+      - name: Install Deps
+        run: npm install
+      - name: Set ORM Configuration
+        run: cp ormconfig.yml.example ormconfig.yml
+      - name: Test
+        run: npm run test:cov
+      - name: Upload codecov
+        if: matrix.os == 'macos-latest' && matrix.node == '14'
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true

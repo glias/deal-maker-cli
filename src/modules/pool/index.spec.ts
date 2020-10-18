@@ -1,1 +1,3 @@
-describe.skip('Test pool module', () => {})
+describe.skip('Test pool module', () => {
+  it.skip('', () => {})
+})

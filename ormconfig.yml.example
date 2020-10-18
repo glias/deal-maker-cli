@@ -3,11 +3,14 @@ production:
   name: production
   database: .db/deal_maker.sqlite3.production
   entities:
-    - src/**/*.entity.ts
     - lib/**/*.entity.js
   migrations:
-    - migration/*.js
+    - lib/migrations/*.js
+  cli:
+    migrationsDir: lib/migrations
   logging: false
+  synchronize: false
+  migrationsRun: true
 
 development:
   type: sqlite
@@ -15,9 +18,6 @@ development:
   database: .db/deal_maker.sqlite3.development
   entities:
     - src/**/*.entity.ts
-    - lib/**/*.entity.js
-  migrations:
-    - migration/*.js
   logging: true
   logger: advanced-console
   synchronize: true
@@ -28,7 +28,4 @@ test:
   database: ':memory:'
   entities:
     - src/**/*.entity.ts
-    - lib/**/*.entity.js
-  migrations:
-    - migration/*.js
   synchronize: true
