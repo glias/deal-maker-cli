@@ -26,7 +26,7 @@ class ConfigRepository extends Repository<Config> {
   }
 
   public setRemoteUrl = async (url: string): Promise<boolean> => {
-    if (!isURL(url, { require_tld: false, require_host: false })) {
+    if (!isURL(url, { require_tld: false, require_protocol: true, require_host: true })) {
       throw new Error('remote url must be an URL address')
     }
     const config = await this.getConfig()

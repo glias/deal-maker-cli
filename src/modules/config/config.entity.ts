@@ -8,7 +8,10 @@ export class Config {
   id: number
 
   @Column('varchar', { name: 'remote_url', default: 'http://localhost:8114' })
-  @IsUrl({ require_tld: false, require_host: false }, { message: 'remote url must be an URL address' })
+  @IsUrl(
+    { require_tld: false, require_protocol: true, require_host: true },
+    { message: 'remote url must be an URL address' },
+  )
   remoteUrl: string
 
   @Column('varchar', { name: 'token_pairs', default: '' })
