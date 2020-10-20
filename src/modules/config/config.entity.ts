@@ -23,6 +23,9 @@ export class Config {
   @Column('varchar', { name: 'key_file', eager: false, nullable: true })
   keyFile: string | null
 
+  @Column('varchar', { name: 'tip_block_number', default: '0x0' })
+  tipBlockNumber: string
+
   @BeforeInsert()
   @BeforeUpdate()
   async validate() {

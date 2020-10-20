@@ -55,6 +55,13 @@ class ConfigRepository extends Repository<Config> {
     await this.save(config)
     return true
   }
+
+  public setTipBlockNumber = async (tipBlockNumber: string): Promise<boolean> => {
+    const config = await this.getConfig()
+    config.tipBlockNumber = tipBlockNumber
+    await this.save(config)
+    return true
+  }
 }
 
 export default ConfigRepository
