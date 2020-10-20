@@ -1,16 +1,18 @@
-import { createConnection } from 'typeorm'
+import { createConnection, getConnection, Connection } from 'typeorm'
 import ConfigRepository from './config.repository'
 
 describe('Test config repository', () => {
   let configRepository: ConfigRepository
+  const CONNECTION_NAME = 'test'
 
   beforeAll(async () => {
-    const connection = await createConnection('test')
+    const connection = await createConnection(CONNECTION_NAME)
     configRepository = connection.getCustomRepository(ConfigRepository)
+    await configRepository.init()
   })
 
-  beforeEach(async () => {
-    await configRepository.init()
+  afterAll(async () => {
+    await getConnection(CONNECTION_NAME).close()
   })
 
   it('should has default config', async () => {
@@ -24,11 +26,22 @@ describe('Test config repository', () => {
     })
   })
 
-  it('should set remote url', async () => {
-    const REMOTE_URL = 'new remote url'
-    await configRepository.setRemoteUrl(REMOTE_URL)
-    const config = await configRepository.getConfig()
-    expect(config.remoteUrl).toBe(REMOTE_URL)
+  describe('Set remote url', () => {
+    it('should set remote url when it is valid', async () => {
+      const REMOTE_URL = 'http://localhost:8000'
+      await configRepository.setRemoteUrl(REMOTE_URL)
+      const config = await configRepository.getConfig()
+      expect(config.remoteUrl).toBe(REMOTE_URL)
+    })
+
+    it('should throw an error when it is invalid', async () => {
+      const REMOTE_URL = 'new remote url'
+      try {
+        await configRepository.setRemoteUrl(REMOTE_URL)
+      } catch (err) {
+        expect(err).toEqual(new Error('remote url must be an URL address'))
+      }
+    })
   })
 
   it('should set fee rate', async () => {

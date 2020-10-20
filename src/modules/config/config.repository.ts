@@ -1,25 +1,34 @@
 import { Repository, EntityRepository } from 'typeorm'
+import { isURL } from 'class-validator'
 import { Config } from './config.entity'
 
 @EntityRepository(Config)
 class ConfigRepository extends Repository<Config> {
-  public init = async (): Promise<boolean> => {
-    const count = await this.count()
-    if (!count) {
-      const config = this.create()
-      await this.save(config)
-      return true
+  #id = 1
+  #defaultConfig = {
+    id: this.#id,
+    remoteUrl: 'http://localhost:8114',
+    feeRate: '1000',
+    tokenPairs: '',
+  }
+
+  public init = async (): Promise<void> => {
+    const config = await this.findOne(this.#id)
+    if (!config) {
+      await this.save(this.#defaultConfig)
     }
-    return false
   }
 
   public getConfig = async (): Promise<Config> => {
-    const config = await this.findOne()
+    const config = await this.findOne(this.#id)
     if (!config) await this.init()
-    return this.findOne() as any
+    return this.findOne(this.#id) as any
   }
 
   public setRemoteUrl = async (url: string): Promise<boolean> => {
+    if (!isURL(url, { require_tld: false, require_host: false })) {
+      throw new Error('remote url must be an URL address')
+    }
     const config = await this.getConfig()
     config.remoteUrl = url
     await this.save(config)

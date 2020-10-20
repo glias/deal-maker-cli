@@ -1,16 +1,20 @@
 import DealMaker from '..'
 import { logger } from '../utils'
 
-const setConfig = async (config: Partial<Record<'url' | 'feeRate' | 'keyFile' | 'tokenPairs', string>>) => {
+type SetConfigParams = Partial<Record<'url' | 'feeRate' | 'keyFile' | 'tokenPairs', string>>
+
+const setConfig = async (config: SetConfigParams) => {
   const dealMaker = new DealMaker()
   await dealMaker.getConfig()
   Object.entries(config).forEach(([k, v]: any) => {
-    dealMaker
-      .setConfig(k, v)
-      .then(() => {
-        logger.info(`${k} is set to ${v}`)
-      })
-      .catch(logger.error)
+    if (v !== undefined) {
+      dealMaker
+        .setConfig(k, v)
+        .then(() => {
+          logger.info(`${k} is set to ${v}`)
+        })
+        .catch(logger.error)
+    }
   })
 }
 
