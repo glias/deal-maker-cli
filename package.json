@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "description": "",
   "bin": "lib/cli/index.js",
+  "engines": {
+    "node": ">=12.9.0"
+  },
   "scripts": {
     "start": "cross-env NODE_ENV=development ts-node src/cli run",
+    "start:config": "cross-env NODE_ENV=development ts-node src/cli config",
     "start:watch": "nodemon",
     "start:cli": "ts-node src/cli",
     "start:prod": "cross-env NODE_ENV=production node lib/cli",
