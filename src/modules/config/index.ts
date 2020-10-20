@@ -23,6 +23,10 @@ class ConfigService {
     return this.#configRepository.setFeeRate(feeRate)
   }
 
+  public setTipBlockNumber = async (tipBlockNumber: string): Promise<boolean> => {
+    return this.#configRepository.setTipBlockNumber(tipBlockNumber)
+  }
+
   public addTokenPair = async (tokenPair: string): Promise<boolean> => {
     const config = await this.getConfig()
     const tokenPairs = new Set(config.tokenPairs.split(',').filter(p => p))

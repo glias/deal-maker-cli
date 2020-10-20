@@ -23,6 +23,7 @@ describe('Test config repository', () => {
       tokenPairs: '',
       feeRate: '1000',
       keyFile: null,
+      tipBlockNumber: '0x0',
     })
   })
 
@@ -63,5 +64,12 @@ describe('Test config repository', () => {
     await configRepository.setKeyFile(KEY_FILE)
     const config = await configRepository.getConfig()
     expect(config.keyFile).toBe(KEY_FILE)
+  })
+
+  it('should set tip block number', async () => {
+    const TIP_BLOCK_NUMBER = '1'
+    await configRepository.setTipBlockNumber(TIP_BLOCK_NUMBER)
+    const config = await configRepository.getConfig()
+    expect(config.tipBlockNumber).toBe(TIP_BLOCK_NUMBER)
   })
 })

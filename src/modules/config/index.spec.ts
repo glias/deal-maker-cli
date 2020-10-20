@@ -27,6 +27,7 @@ describe('Test config module', () => {
       keyFile: null,
       remoteUrl: 'http://localhost:8114',
       tokenPairs: '',
+      tipBlockNumber: '0x0',
     })
   })
 
@@ -42,6 +43,13 @@ describe('Test config module', () => {
     await configService.setFeeRate(FEE_RATE)
     const config = await configService.getConfig()
     expect(config.feeRate).toBe(FEE_RATE)
+  })
+
+  it('should set tip block number', async () => {
+    const TIP_BLOCK_NUMBER = '1'
+    await configService.setTipBlockNumber(TIP_BLOCK_NUMBER)
+    const config = await configService.getConfig()
+    expect(config.tipBlockNumber).toBe(TIP_BLOCK_NUMBER)
   })
 
   describe('update token pair', () => {

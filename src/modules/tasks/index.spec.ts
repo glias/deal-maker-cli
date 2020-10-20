@@ -1,9 +1,22 @@
+jest.mock('node-fetch', () => require('fetch-mock').sandbox())
+const fetchMock = require('node-fetch')
+
+fetchMock.config.overwriteRoutes = false
+
 import 'reflect-metadata'
+import { injectable } from 'inversify'
 import TasksService from '.'
-// import OrdersService from '../orders'
-// import PoolService from '../pool'
-import bootstrap from '../../bootstrap'
+import ConfigService from '../config'
+import OrdersService from '../orders'
 import { container, modules } from '../../container'
+
+@injectable()
+class MockConfigService {
+  setTipBlockNumber = jest.fn()
+}
+
+@injectable()
+class MockOrdersService {}
 
 jest.useFakeTimers()
 
@@ -11,26 +24,31 @@ describe('Test tasks module', () => {
   let tasksService: TasksService
 
   beforeAll(async () => {
-    await bootstrap()
-  })
+    modules[ConfigService.name] = Symbol(ConfigService.name)
+    modules[OrdersService.name] = Symbol(OrdersService.name)
+    modules[TasksService.name] = Symbol(TasksService.name)
+    container.bind(modules[ConfigService.name]).to(MockConfigService)
+    container.bind(modules[OrdersService.name]).to(MockOrdersService)
+    container.bind(modules[TasksService.name]).to(TasksService)
 
-  beforeEach(() => {
     tasksService = container.get(modules[TasksService.name])
   })
 
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
+  describe('Test sync', () => {
+    const fixtures = {
+      tipBlockNumber: '0x1234',
+      remoteUrl: 'http://localhost:8114',
+    }
 
-  it.skip('start interval in tasksService#work', () => {
-    tasksService.work()
-    expect(setInterval).toHaveBeenCalled()
-  })
-
-  it('tasksService#work should be called in tasksService#start', () => {
-    const mockedWork = jest.spyOn(tasksService, 'work')
-    tasksService.start()
-    expect(setInterval).toHaveBeenCalled()
-    expect(mockedWork).toBeCalled()
+    describe('Test fast sync', () => {
+      beforeAll(() => {
+        fetchMock.post(`${fixtures.remoteUrl}/rpc`, { result: fixtures.tipBlockNumber })
+      })
+      it('should update tip block number', async () => {
+        await tasksService.fastSync(fixtures.remoteUrl)
+        const configService = container.get<any>(modules[ConfigService.name])
+        expect(configService.setTipBlockNumber.mock.calls[0][0]).toEqual(fixtures.tipBlockNumber)
+      })
+    })
   })
 })
