@@ -1,4 +1,4 @@
-import { createConnection, getConnection, Connection } from 'typeorm'
+import { createConnection, getConnection } from 'typeorm'
 import ConfigRepository from './config.repository'
 
 describe('Test config repository', () => {

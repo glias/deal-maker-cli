@@ -10,8 +10,8 @@ jobs:
   default:
     strategy:
       matrix:
-        node: [12, 13, 14]
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        node: [12] # 13, 14 is not supported since limitation of lumos
+        os: [macos-latest, ubuntu-latest] # windows is not supported since limitation of lumos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2

@@ -1,13 +1,14 @@
 // @ts-nocheck
 import { BeforeInsert, BeforeUpdate, Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
 import { IsUrl, validate } from 'class-validator'
+import { DEFAULT_NODE_URL, DEFAULT_FEE_PRICE } from '../../utils'
 
 @Entity()
 export class Config {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column('varchar', { name: 'remote_url', default: 'http://localhost:8114' })
+  @Column('varchar', { name: 'remote_url', default: DEFAULT_NODE_URL })
   @IsUrl(
     { require_tld: false, require_protocol: true, require_host: true },
     { message: 'remote url must be an URL address' },
@@ -17,7 +18,7 @@ export class Config {
   @Column('varchar', { name: 'token_pairs', default: '' })
   tokenPairs: string
 
-  @Column('varchar', { name: 'fee_rate', default: '1000' })
+  @Column('varchar', { name: 'fee_rate', default: DEFAULT_FEE_PRICE })
   feeRate: string
 
   @Column('varchar', { name: 'key_file', eager: false, nullable: true })
