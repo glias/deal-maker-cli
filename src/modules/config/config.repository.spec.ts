@@ -22,8 +22,8 @@ describe('Test config repository', () => {
       remoteUrl: 'http://localhost:8114',
       tokenPairs: '',
       feeRate: '1000',
-      keyFile: null,
       tipBlockNumber: '0x0',
+      keyFile: null,
     })
   })
 

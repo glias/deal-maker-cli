@@ -1,7 +1,10 @@
+import os from 'os'
+import path from 'path'
 import { injectable } from 'inversify'
 import { getConnection } from 'typeorm'
 import ConfigRepository from './config.repository'
 import { Config } from './config.entity'
+import { INDEXER_DB } from '../../utils'
 
 @injectable()
 class ConfigService {
@@ -42,6 +45,15 @@ class ConfigService {
     const tokenPairs = new Set(config.tokenPairs.split(','))
     tokenPairs.delete(tokenPair)
     return this.#configRepository.setTokenPairs([...tokenPairs].join(','))
+  }
+
+  public getDbPath = () => {
+    const sqlite = getConnection(process.env.NODE_ENV).options.database
+
+    const indexer =
+      typeof sqlite === 'string' ? path.join(sqlite, '..', INDEXER_DB) : path.join(os.tmpdir(), INDEXER_DB)
+
+    return { sqlite, indexer }
   }
 }
 

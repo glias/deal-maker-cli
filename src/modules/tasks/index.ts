@@ -2,12 +2,11 @@ import { injectable, inject, LazyServiceIdentifer } from 'inversify'
 import { Indexer } from '@ckb-lumos/indexer'
 // import { CronJob } from 'cron'
 import { modules } from '../../container'
-import { getTipBlockNumber } from '../../utils'
 import OrdersService from '../orders'
 import ConfigService from '../config'
-import { startIndexer, scanOrderCells } from '../../utils'
+import { logger, startIndexer, scanOrderCells, subscribeOrderCell } from '../../utils'
 
-// const logTag = `\x1b[35m[Tasks Service]\x1b[0m`
+const logTag = `\x1b[35m[Tasks Service]\x1b[0m`
 
 @injectable()
 class TasksService {
@@ -18,6 +17,9 @@ class TasksService {
   //   match: '*/5 * * * * *',
   //   sync: '*/10 * * * * *',
   // }
+  #log = (msg: string) => {
+    logger.info(`${logTag}: ${msg}`)
+  }
 
   constructor(
     @inject(new LazyServiceIdentifer(() => modules[OrdersService.name])) ordersService: OrdersService,
@@ -30,6 +32,7 @@ class TasksService {
   start = async () => {
     await this.startIndexer()
     await this.scanOrderCells()
+    this.subscribeOrderCell()
     this.#ordersService.match()
     // new CronJob(this.#schedule.match, this.#match, null, true)
     // new CronJob(this.#schedule.sync, this.#sync, null, true)
@@ -37,31 +40,18 @@ class TasksService {
 
   startIndexer = async () => {
     const remoteUrl = await this.#configService.getConfig().then(config => config.remoteUrl)
-    this.#indexer = await startIndexer(remoteUrl)
+    const indexerDbPath = this.#configService.getDbPath().indexer
+    this.#indexer = await startIndexer(remoteUrl, indexerDbPath)
   }
 
   scanOrderCells = async () => {
-    scanOrderCells(this.#indexer, this.#ordersService.saveOrder)
+    await this.#ordersService.clearOrders()
+    return scanOrderCells(this.#indexer, this.#ordersService.saveOrder)
   }
 
-  // #sync = () => {
-  //   this.#fetchBlock()
-  // }
-
-  // #fetchBlock = async () => {
-  //   const config = await this.#configService.getConfig()
-  //   if (!config.remoteUrl) {
-  //     return
-  //   }
-  //   const apiUrl = `${config.remoteUrl}`
-
-  //   return apiUrl
-  // }
-
-  fastSync = async (remoteUrl: string) => {
-    const tipBlockNumber = await getTipBlockNumber(`${remoteUrl}/rpc`)
-    this.#configService.setTipBlockNumber(tipBlockNumber)
-    //   await fastSync(`${url}/indexer`, console.log)
+  subscribeOrderCell = async () => {
+    this.#log(`Subscribe to order cell`)
+    return subscribeOrderCell(this.#indexer, this.scanOrderCells)
   }
 }
 
