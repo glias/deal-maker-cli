@@ -45,6 +45,13 @@ describe('Test config module', () => {
     expect(config.feeRate).toBe(FEE_RATE)
   })
 
+  it('should set key file', async () => {
+    const KEY_FILE_PATH = 'file://localhost/key/file/path'
+    await configService.setKeyFile(KEY_FILE_PATH)
+    const config = await configService.getConfig()
+    expect(config.keyFile).toBe(KEY_FILE_PATH)
+  })
+
   it('should set tip block number', async () => {
     const TIP_BLOCK_NUMBER = '1'
     await configService.setTipBlockNumber(TIP_BLOCK_NUMBER)

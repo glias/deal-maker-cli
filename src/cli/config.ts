@@ -1,7 +1,7 @@
 import DealMaker from '..'
 import { logger } from '../utils'
 
-type SetConfigParams = Partial<Record<'url' | 'feeRate' | 'keyFile' | 'tokenPairs', string>>
+type SetConfigParams = Partial<Record<'url' | 'feeRate' | 'keyFile' | 'addTokenPair' | 'removeTokenPair', string>>
 
 const setConfig = async (config: SetConfigParams) => {
   const dealMaker = new DealMaker()
@@ -11,7 +11,7 @@ const setConfig = async (config: SetConfigParams) => {
       dealMaker
         .setConfig(k, v)
         .then(() => {
-          logger.info(`${k} is set to ${v}`)
+          logger.info(`${k} is updated with "${v}"`)
         })
         .catch(logger.error)
     }
@@ -43,9 +43,13 @@ const options: Record<string, Record<'option' | 'desc', string>> = {
     option: '--key-file <key file>',
     desc: 'key file path',
   },
-  tokenPairs: {
-    option: '--token-pairs <token pairs>',
-    desc: 'token pair list',
+  addTokenPair: {
+    option: '--add-token-pair <token pair>',
+    desc: 'add token pair',
+  },
+  removeTokenPair: {
+    option: '--remove-token-pair <token pair>',
+    desc: 'remove token pair',
   },
 }
 
@@ -54,9 +58,9 @@ export default {
   desc: 'view or set deal maker configuration',
   options,
   exec: (cmdObj: any) => {
-    const { url, feeRate, keyFile, tokenPairs } = cmdObj
-    if (url || feeRate || keyFile || tokenPairs) {
-      setConfig({ url, feeRate, keyFile, tokenPairs })
+    const { url, feeRate, keyFile, addTokenPair, removeTokenPair } = cmdObj
+    if (url || feeRate || keyFile || addTokenPair || removeTokenPair) {
+      setConfig({ url, feeRate, keyFile, addTokenPair, removeTokenPair })
     } else {
       printConfig()
     }
