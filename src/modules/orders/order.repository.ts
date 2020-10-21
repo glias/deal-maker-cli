@@ -30,7 +30,7 @@ class OrderRepository extends Repository<Order> {
       skip: pageNo * this.#pageSize,
       take: this.#pageSize,
       order: {
-        price: 'DESC',
+        price: type === OrderType.Bid ? 'DESC' : 'ASC',
         blockNumber: 'DESC',
       },
       where: {

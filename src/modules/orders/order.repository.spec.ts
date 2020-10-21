@@ -101,7 +101,7 @@ describe('Test order repository', () => {
     const bidOrders = await orderRepository.getOrders(0, OrderType.Bid)
     expect(askOrders.length).toBe(2)
     expect(bidOrders.length).toBe(2)
-    expect(askOrders[0].price).toBeGreaterThan(askOrders[1].price)
+    expect(askOrders[0].price).toBeLessThan(askOrders[1].price)
     expect(bidOrders[0].price).toBeGreaterThan(bidOrders[1].price)
   })
 })
