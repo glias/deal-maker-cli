@@ -8,6 +8,12 @@ Follow the [guide](https://nodejs.org/en/download/) to install Node.js.
 
 ## How to start development
 
+### Set environment variables
+
+```bash
+cp ./ormconfig.yml.example ./ormconfig.yml
+```
+
 ### Install Dependencies
 
 ```bash
@@ -50,8 +56,8 @@ Pool service has two main jobs:
 
 Orders service has two main jobs:
 
-1. Update buying/selling orders;
-2. Match buying/selling orders.
+1. Update ask/bid orders;
+2. Match ask/bid orders.
 
 ### Tasks Service
 

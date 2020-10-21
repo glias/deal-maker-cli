@@ -10,8 +10,8 @@ jobs:
   default:
     strategy:
       matrix:
-        node: [12, 13, 14]
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        node: [12] # 13, 14 is not supported since limitation of lumos
+        os: [macos-latest, ubuntu-latest] # windows is not supported since limitation of lumos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -33,7 +33,7 @@ jobs:
       - name: Test
         run: npm run test:cov
       - name: Upload codecov
-        if: matrix.os == 'macos-latest' && matrix.node == '14'
+        if: matrix.os == 'macos-latest' && matrix.node == '12'
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

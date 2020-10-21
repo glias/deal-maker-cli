@@ -1,14 +1,15 @@
 import { Repository, EntityRepository } from 'typeorm'
 import { isURL } from 'class-validator'
 import { Config } from './config.entity'
+import { DEFAULT_NODE_URL, DEFAULT_FEE_PRICE } from '../../utils'
 
 @EntityRepository(Config)
 class ConfigRepository extends Repository<Config> {
   #id = 1
   #defaultConfig = {
     id: this.#id,
-    remoteUrl: 'http://localhost:8114',
-    feeRate: '1000',
+    remoteUrl: DEFAULT_NODE_URL,
+    feeRate: DEFAULT_FEE_PRICE,
     tokenPairs: '',
   }
 

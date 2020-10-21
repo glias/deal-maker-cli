@@ -4,6 +4,7 @@ import { container, modules } from './container'
 import { logger } from './utils'
 import ConfigService from './modules/config'
 import TasksService from './modules/tasks'
+import OrdersService from './modules/orders'
 
 const logTag = `\x1b[35m[Deal Maker]\x1b[0m`
 export default class DealMaker {
@@ -18,6 +19,10 @@ export default class DealMaker {
 
   private get tasksService() {
     return container.get<TasksService>(modules[TasksService.name])
+  }
+
+  private get orderService() {
+    return container.get<OrdersService>(modules[OrdersService.name])
   }
 
   #bootstrap = async () => {
@@ -65,6 +70,15 @@ export default class DealMaker {
       default: {
         throw new Error(`${key} not found in config`)
       }
+    }
+  }
+
+  public getOrders = async () => {
+    await this.#bootstrap()
+    const [asks, bids] = await Promise.all([this.orderService.getAskOrders(), this.orderService.getBidOrders()])
+    return {
+      asks,
+      bids,
     }
   }
 }

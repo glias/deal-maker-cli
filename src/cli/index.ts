@@ -5,6 +5,7 @@ import setVersion from './setVersion'
 import init from './init'
 import run from './run'
 import config from './config'
+import orders from './orders'
 
 const start = () => {
   const program = new Command()
@@ -18,7 +19,7 @@ const start = () => {
     desc: string
     options?: Record<string, Record<'option' | 'desc', string>>
     exec: (...args: any[]) => void | Promise<void>
-  }> = [init, run, config]
+  }> = [init, run, config, orders]
   commandList.forEach(meta => {
     const subCmd = program.command(meta.cmd)
     if (meta.options) {
