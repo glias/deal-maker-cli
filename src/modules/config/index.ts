@@ -27,6 +27,10 @@ class ConfigService {
     return this.#configRepository.setTipBlockNumber(tipBlockNumber)
   }
 
+  public setKeyFile = async (keyFilePath: string): Promise<boolean> => {
+    return this.#configRepository.setKeyFile(keyFilePath)
+  }
+
   public addTokenPair = async (tokenPair: string): Promise<boolean> => {
     const config = await this.getConfig()
     const tokenPairs = new Set(config.tokenPairs.split(',').filter(p => p))
