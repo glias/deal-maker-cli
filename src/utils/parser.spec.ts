@@ -40,7 +40,7 @@ describe('Test parser', () => {
       blockNumber: +CELL.block_number,
       type: '01',
       price: BigInt(50000000000),
-      output: CELL.cell_output,
+      output: { ...CELL.cell_output, data: CELL.data },
     })
   })
 })

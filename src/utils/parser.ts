@@ -39,6 +39,9 @@ export const parseOrderCell = (cell: Cell) => {
     blockNumber,
     type,
     price,
-    output: cell.cell_output,
+    output: {
+      ...cell.cell_output,
+      data: cell.data,
+    },
   }
 }
