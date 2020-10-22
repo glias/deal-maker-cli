@@ -1,15 +1,13 @@
 import { parseOrderCell, parseOrderData } from './parser'
 describe('Test parser', () => {
   it('parse order data', () => {
-    const DATA =
-      '0x00f2052a01000000000000000000000000f2052a01000000000000000000000000d6117e030000000000000000000000005847f80d00000000'
+    const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001'
 
     expect(parseOrderData(DATA)).toEqual({
-      sudtAmount: BigInt(5000000000),
-      tradeAmount: BigInt(5000000000),
-      orderAmount: BigInt(15000000000),
-      price: BigInt(60000000000),
-      type: '00',
+      sudtAmount: BigInt(50000000000),
+      orderAmount: BigInt(100000000000),
+      price: BigInt(50000000000),
+      type: '01',
     })
   })
 
@@ -34,8 +32,7 @@ describe('Test parser', () => {
       },
       block_hash: '0xaaeee4a93a1d79ccdf50f9e2e6c688f9d935bb8c21aeaf2c09508f8070b1bd89',
       block_number: '0x13',
-      data:
-        '0x00743ba40b000000000000000000000000e40b5402000000000000000000000000c817a804000000000000000000000000743ba40b00000001',
+      data: '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001',
     }
     expect(parseOrderCell(CELL as any)).toEqual({
       id: `${CELL.out_point.tx_hash}-${CELL.out_point.index}`,

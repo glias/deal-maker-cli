@@ -74,8 +74,7 @@ describe('Test orders service', () => {
         },
         block_hash: '0xaaeee4a93a1d79ccdf50f9e2e6c688f9d935bb8c21aeaf2c09508f8070b1bd89',
         block_number: '0x13',
-        data:
-          '0x00743ba40b000000000000000000000000e40b5402000000000000000000000000c817a804000000000000000000000000743ba40b00000001',
+        data: '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001',
       },
     }
     it('should save order', async () => {
