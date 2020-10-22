@@ -1,0 +1,22 @@
+import { DealStatus } from '../modules/orders/deal.entity'
+
+export const pendingDeal = {
+  txHash: '0x0000',
+  orderIds: '0x00-0x0,0x00-0x1,0x00-0x2',
+  fee: '0x10',
+  status: DealStatus.Pending,
+}
+
+export const pendingDeal_1 = {
+  txHash: '0x0001',
+  orderIds: '0x00-0x3,0x00-0x4,0x00-0x5',
+  fee: '0x10',
+  status: DealStatus.Pending,
+}
+
+export const doneDeal = {
+  txHash: '0x1111',
+  orderIds: '0x01-0x0,0x01-0x1,0x02-0x2',
+  fee: '0x20',
+  status: DealStatus.Done,
+}

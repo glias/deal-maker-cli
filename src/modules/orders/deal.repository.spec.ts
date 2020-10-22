@@ -1,6 +1,7 @@
 import { createConnection, getConnection } from 'typeorm'
 import DealRepository from './deal.repository'
 import { DealStatus } from './deal.entity'
+import { pendingDeal, pendingDeal_1, doneDeal } from '../../mock'
 
 describe('Test deal repository', () => {
   let dealRepository: DealRepository
@@ -18,23 +19,16 @@ describe('Test deal repository', () => {
     await dealRepository.clear()
   })
 
-  const DEAL = {
-    txHash: 'tx_hash',
-    orderIds: 'order_ids',
-    fee: 'fee',
-    status: DealStatus.Pending,
-  }
-
   it('save deal', async () => {
     let count = await dealRepository.count()
     expect(count).toBe(0)
-    await dealRepository.saveDeal(DEAL)
+    await dealRepository.saveDeal(pendingDeal)
     count = await dealRepository.count()
     expect(count).toBe(1)
   })
 
   it('remove deal', async () => {
-    await dealRepository.saveDeal(DEAL)
+    await dealRepository.saveDeal(pendingDeal)
     let count = await dealRepository.count()
     expect(count).toBe(1)
     const saved = await dealRepository.findOne()
@@ -44,7 +38,7 @@ describe('Test deal repository', () => {
   })
 
   it('change deal status', async () => {
-    let saved = await dealRepository.saveDeal(DEAL)
+    let saved = await dealRepository.saveDeal(pendingDeal)
     expect(saved.status).toBe(DealStatus.Pending)
     await dealRepository.changeDealStatus(saved.txHash, DealStatus.Done)
     saved = await dealRepository.findOne(saved.txHash)
@@ -52,7 +46,7 @@ describe('Test deal repository', () => {
   })
 
   it('get orders by status', async () => {
-    await dealRepository.saveDeal({ ...DEAL, status: DealStatus.Done })
+    await dealRepository.saveDeal(doneDeal)
 
     const doneDeals = await dealRepository.getDealsByStatus(DealStatus.Done, 0)
     const pendingDeals = await dealRepository.getDealsByStatus(DealStatus.Pending, 0)
@@ -60,9 +54,17 @@ describe('Test deal repository', () => {
     expect(pendingDeals).toHaveLength(0)
   })
 
-  it('get pending orders', async () => {
-    await dealRepository.saveDeal({ ...DEAL, status: DealStatus.Pending })
+  it('get pending deals', async () => {
+    await dealRepository.saveDeal(pendingDeal)
     const pendingDeals = await dealRepository.getPendingDeals()
     expect(pendingDeals).toHaveLength(1)
+  })
+
+  it('get pending order ids', async () => {
+    await dealRepository.saveDeal(pendingDeal)
+    await dealRepository.saveDeal(pendingDeal_1)
+    await dealRepository.saveDeal(doneDeal)
+    const pendingOrderIds = await dealRepository.getPendingOrderIds()
+    expect(pendingOrderIds).toEqual([...pendingDeal.orderIds.split(','), ...pendingDeal_1.orderIds.split(',')])
   })
 })

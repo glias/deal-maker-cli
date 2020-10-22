@@ -34,6 +34,13 @@ class DealRepository extends Repository<Deal> {
       },
     })
   }
+
+  getPendingOrderIds() {
+    return this.find({
+      where: { status: DealStatus.Pending },
+      select: ['orderIds'],
+    }).then(orders => orders.flatMap((o: Pick<Deal, 'orderIds'>) => o.orderIds.split(',')))
+  }
 }
 
 export default DealRepository

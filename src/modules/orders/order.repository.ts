@@ -1,5 +1,5 @@
 import { injectable } from 'inversify'
-import { EntityRepository, Repository } from 'typeorm'
+import { EntityRepository, Repository, Not, In } from 'typeorm'
 import { parseOrderCell } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
@@ -15,7 +15,7 @@ class OrderRepository extends Repository<Order> {
     return this.delete(id)
   }
 
-  async getOrders(pageNo: number, type: OrderType) {
+  async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = []) {
     return this.find({
       skip: pageNo * this.#pageSize,
       take: this.#pageSize,
@@ -25,6 +25,7 @@ class OrderRepository extends Repository<Order> {
       },
       where: {
         type: type,
+        id: Not(In(pendingOrderIds)),
       },
     }).then(orders => orders.map(o => ({ ...o, price: BigInt(`0x${o.price}`) })))
   }
