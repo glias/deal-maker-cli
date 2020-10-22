@@ -27,10 +27,7 @@ class MockConfigService {
 @injectable()
 class MockOrdersService {
   match = jest.fn()
-  clearOrders = jest.fn()
 }
-
-jest.useFakeTimers()
 
 describe('Test tasks module', () => {
   let tasksService: TasksService
@@ -89,8 +86,7 @@ describe('Test tasks module', () => {
       await tasksService.scanOrderCells()
     })
 
-    it('should call ordersService#clearOrders and scanOrderCells', () => {
-      expect(mockOrdersService.clearOrders).toBeCalledTimes(1)
+    it('should call scanOrderCells', () => {
       expect(mockScanOrderCells).toBeCalledTimes(1)
     })
   })

@@ -44,6 +44,14 @@ class OrdersService {
     return this.#orderRepository.getOrders(pageNo, OrderType.Bid)
   }
 
+  public flushOrders = (cells: Array<Cell>) => {
+    return this.#orderRepository.flushAllOrders(cells.map(parseOrderCell))
+  }
+
+  public clearOrders = () => {
+    return this.#orderRepository.clear()
+  }
+
   public saveDeal = (deal: Omit<Deal, 'createdAt'>) => {
     return this.#dealRepository.saveDeal(deal)
   }
@@ -58,10 +66,6 @@ class OrdersService {
 
   public getPendingDeals = () => {
     return this.#dealRepository.getPendingDeals()
-  }
-
-  public clearOrders() {
-    return this.#orderRepository.clear()
   }
 }
 

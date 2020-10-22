@@ -8,13 +8,7 @@ import { Order, OrderType } from './order.entity'
 class OrderRepository extends Repository<Order> {
   #pageSize = 100
   async saveOrder(cell: ReturnType<typeof parseOrderCell>) {
-    const cellToSave = this.create({
-      ...cell,
-      output: JSON.stringify(cell.output),
-      type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
-      price: Number(cell.price),
-    })
-    return this.save(cellToSave)
+    return this.save(this.#toCell(cell))
   }
 
   async removeOrder(id: string) {
@@ -34,6 +28,23 @@ class OrderRepository extends Repository<Order> {
       },
     })
   }
+
+  async flushAllOrders(cells: Array<ReturnType<typeof parseOrderCell>>) {
+    return this.manager.transaction(async txManager => {
+      await txManager.clear(Order)
+      for (let i = 0; i < cells.length; i++) {
+        await txManager.save(this.#toCell(cells[i]))
+      }
+    })
+  }
+
+  #toCell = (cell: ReturnType<typeof parseOrderCell>) =>
+    this.create({
+      ...cell,
+      output: JSON.stringify(cell.output),
+      type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
+      price: Number(cell.price),
+    })
 }
 
 export default OrderRepository

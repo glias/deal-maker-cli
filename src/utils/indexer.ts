@@ -11,7 +11,7 @@ export const startIndexer = async (url: string, dbPath: string) => {
   return indexer
 }
 
-export const scanOrderCells = async (indexer: Indexer, cellHandler: (cell: Cell) => void) => {
+export const scanOrderCells = async (indexer: Indexer, cellHandler: (cell: Cell[]) => Promise<void>) => {
   if (!indexer.running()) {
     indexer.startForever()
   }
@@ -21,12 +21,12 @@ export const scanOrderCells = async (indexer: Indexer, cellHandler: (cell: Cell)
     type: { script: ORDER_SCRIPTS.type, argsLen: 'any' },
   })
 
-  let total = 0
+  const cells: Cell[] = []
   for await (const cell of cellCollector.collect()) {
-    cellHandler(cell)
-    total += 1
+    cells.push(cell)
   }
-  return total
+  await cellHandler(cells)
+  return cells.length
 }
 
 export const subscribeOrderCell = async (indexer: Indexer, handler: Function) => {

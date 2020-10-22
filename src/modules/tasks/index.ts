@@ -45,8 +45,7 @@ class TasksService {
   }
 
   scanOrderCells = async () => {
-    await this.#ordersService.clearOrders()
-    return scanOrderCells(this.#indexer, this.#ordersService.saveOrder)
+    return scanOrderCells(this.#indexer, this.#ordersService.flushOrders)
   }
 
   subscribeOrderCell = async () => {
