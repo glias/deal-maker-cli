@@ -2,8 +2,10 @@ import { injectable } from 'inversify'
 import { getConnection } from 'typeorm'
 import type { Cell } from '@ckb-lumos/base'
 import OrderRepository from './order.repository'
-import { Order, OrderStatus, OrderType } from './order.entity'
+import DealRepository from './deal.repository'
+import { Order, OrderType } from './order.entity'
 import { logger, parseOrderCell } from '../../utils'
+import { Deal, DealStatus } from './deal.entity'
 
 const logTag = `\x1b[35m[Orders Service]\x1b[0m`
 
@@ -14,6 +16,7 @@ class OrdersService {
   }
 
   #orderRepository = getConnection(process.env.NODE_ENV).getCustomRepository(OrderRepository)
+  #dealRepository = getConnection(process.env.NODE_ENV).getCustomRepository(DealRepository)
   public match() {
     this.#log(`Match Orders`)
   }
@@ -27,25 +30,37 @@ class OrdersService {
     return this.#orderRepository.removeOrder(id)
   }
 
-  public changeOrderStatus = (id: string, status: OrderStatus) => {
-    return this.#orderRepository.changeOrderStatus(id, status)
-  }
-
   /**
    * @param pageNo start from 0
    */
-  public getAskOrders(pageNo = 0): Promise<Order[]> {
+  public getAskOrders = (pageNo = 0): Promise<Order[]> => {
     return this.#orderRepository.getOrders(pageNo, OrderType.Ask)
   }
 
   /**
    * @param pageNo start from 0
    */
-  public getBidOrders(pageNo = 0): Promise<Order[]> {
+  public getBidOrders = (pageNo = 0): Promise<Order[]> => {
     return this.#orderRepository.getOrders(pageNo, OrderType.Bid)
   }
 
-  public clear() {
+  public saveDeal = (deal: Omit<Deal, 'createdAt'>) => {
+    return this.#dealRepository.saveDeal(deal)
+  }
+
+  public changeDealStatus = (txHash: string, status: DealStatus) => {
+    return this.#dealRepository.changeDealStatus(txHash, status)
+  }
+
+  public removeDeal = (txHash: string) => {
+    return this.#dealRepository.removeDeal(txHash)
+  }
+
+  public getPendingDeals = () => {
+    return this.#dealRepository.getPendingDeals()
+  }
+
+  public clearOrders() {
     return this.#orderRepository.clear()
   }
 }

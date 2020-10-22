@@ -1,7 +1,7 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository } from 'typeorm'
-import { parseOrderCell } from '../../utils/parser'
-import { Order, OrderStatus, OrderType } from './order.entity'
+import { parseOrderCell } from '../../utils'
+import { Order, OrderType } from './order.entity'
 
 @injectable()
 @EntityRepository(Order)
@@ -21,10 +21,6 @@ class OrderRepository extends Repository<Order> {
     return this.delete(id)
   }
 
-  async changeOrderStatus(id: string, status: OrderStatus) {
-    return this.update(id, { status })
-  }
-
   async getOrders(pageNo: number, type: OrderType) {
     return this.find({
       skip: pageNo * this.#pageSize,
@@ -35,7 +31,6 @@ class OrderRepository extends Repository<Order> {
       },
       where: {
         type: type,
-        status: OrderStatus.Available,
       },
     })
   }

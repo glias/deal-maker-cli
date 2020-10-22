@@ -1,4 +1,5 @@
 import 'reflect-metadata'
+import fs from 'fs'
 import boostrap from './bootstrap'
 import { container, modules } from './container'
 import { logger } from './utils'
@@ -79,6 +80,18 @@ export default class DealMaker {
     return {
       asks,
       bids,
+    }
+  }
+  public reset = async () => {
+    await this.#bootstrap()
+    await this.orderService.clearOrders()
+    this.#log(`Orders cleared`)
+    try {
+      const indexerDbPath = this.configService.getDbPath().indexer
+      fs.unlinkSync(indexerDbPath)
+      this.#log(`Indexer data cleared`)
+    } catch (err) {
+      logger.warn(err.message)
     }
   }
 }

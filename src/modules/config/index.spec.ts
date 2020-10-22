@@ -106,4 +106,11 @@ describe('Test config module', () => {
       })
     })
   })
+
+  it('get database path', () => {
+    expect(configService.getDbPath()).toEqual({
+      indexer: 'indexer-data',
+      sqlite: ':memory:',
+    })
+  })
 })

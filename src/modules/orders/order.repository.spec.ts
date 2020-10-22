@@ -1,6 +1,7 @@
 import { createConnection, getConnection } from 'typeorm'
 import OrderRepository from './order.repository'
-import { OrderStatus, OrderType } from './order.entity'
+import { OrderType } from './order.entity'
+import { parseOrderCell } from '../../utils/parser'
 
 describe('Test order repository', () => {
   let orderRepository: OrderRepository
@@ -17,7 +18,7 @@ describe('Test order repository', () => {
   beforeEach(async () => {
     await orderRepository.clear()
   })
-  const ORDERS: any = [
+  const ORDERS: Array<ReturnType<typeof parseOrderCell>> = [
     {
       id: 'id_ask_low_price',
       tokenId: 'token_id_ask',
@@ -26,8 +27,8 @@ describe('Test order repository', () => {
       price: BigInt(123),
       output: {
         capacity: 'capacity_ask',
-        lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask', args: 'args_ask' },
-        type: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask', args: 'args_ask' },
+        lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
+        type: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
       },
     },
     {
@@ -38,8 +39,8 @@ describe('Test order repository', () => {
       price: BigInt(321),
       output: {
         capacity: 'capacity_ask',
-        lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask', args: 'args_ask' },
-        type: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask', args: 'args_ask' },
+        lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
+        type: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
       },
     },
     {
@@ -50,8 +51,8 @@ describe('Test order repository', () => {
       price: BigInt(123),
       output: {
         capacity: 'capacity_bid',
-        lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid', args: 'args_bid' },
-        type: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid', args: 'args_bid' },
+        lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
+        type: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
       },
     },
     {
@@ -62,8 +63,8 @@ describe('Test order repository', () => {
       price: BigInt(321),
       output: {
         capacity: 'capacity_bid',
-        lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid', args: 'args_bid' },
-        type: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid', args: 'args_bid' },
+        lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
+        type: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
       },
     },
   ]
@@ -85,22 +86,15 @@ describe('Test order repository', () => {
     count = await orderRepository.count()
     expect(count).toBe(0)
   })
-  it('change order status', async () => {
-    let saved = await orderRepository.saveOrder(ORDERS[0])
-    expect(saved.status).toBe(OrderStatus.Available)
-    await orderRepository.changeOrderStatus(saved.id, OrderStatus.Pending)
-    saved = await orderRepository.findOne(saved.id)
-    expect(saved.status).toBe(OrderStatus.Pending)
-  })
+
   it('get orders', async () => {
     for (let i = 0; i < ORDERS.length; i++) {
       await orderRepository.saveOrder(ORDERS[i])
     }
-    const orders = await orderRepository.find()
     const askOrders = await orderRepository.getOrders(0, OrderType.Ask)
     const bidOrders = await orderRepository.getOrders(0, OrderType.Bid)
-    expect(askOrders.length).toBe(2)
-    expect(bidOrders.length).toBe(2)
+    expect(askOrders).toHaveLength(2)
+    expect(bidOrders).toHaveLength(2)
     expect(askOrders[0].price).toBeLessThan(askOrders[1].price)
     expect(bidOrders[0].price).toBeGreaterThan(bidOrders[1].price)
   })

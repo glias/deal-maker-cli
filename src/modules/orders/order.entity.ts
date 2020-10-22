@@ -1,35 +1,27 @@
-// @ts-nocheck
 import { Entity, PrimaryColumn, Column } from 'typeorm'
 
 export enum OrderType {
   Bid, // 00
   Ask, // 01
 }
-export enum OrderStatus {
-  Available,
-  Pending,
-}
 
 @Entity()
 export class Order {
   @PrimaryColumn('varchar')
-  id: string // tx_hash + output_index
+  id!: string // tx_hash + output_index
 
   @Column('varchar', { name: 'token_id' })
-  tokenId: string
+  tokenId!: string
 
   @Column('int8')
-  type: OrderType
-
-  @Column('int8', { default: OrderStatus.Available })
-  status: OrderStatus
+  type!: OrderType
 
   @Column('int')
-  price: number
+  price!: number
 
   @Column('int', { name: 'block_number' })
-  blockNumber: number
+  blockNumber!: number
 
   @Column('varchar')
-  output: string
+  output!: string
 }

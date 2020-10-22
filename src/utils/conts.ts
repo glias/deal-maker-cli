@@ -1,9 +1,6 @@
-import os from 'os'
-import path from 'path'
-
 export const DEFAULT_NODE_URL = 'http://localhost:8114'
 export const DEFAULT_FEE_PRICE = '1000'
-export const INDEXER_DB = path.join(os.tmpdir(), 'indexed-data')
+export const INDEXER_DB = 'indexer-data'
 
 export const ORDER_SCRIPTS: any = {
   lock: {
