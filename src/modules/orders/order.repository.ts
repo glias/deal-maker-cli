@@ -26,7 +26,7 @@ class OrderRepository extends Repository<Order> {
       where: {
         type: type,
       },
-    })
+    }).then(orders => orders.map(o => ({ ...o, price: BigInt(`0x${o.price}`) })))
   }
 
   async flushAllOrders(cells: Array<ReturnType<typeof parseOrderCell>>) {
@@ -43,7 +43,7 @@ class OrderRepository extends Repository<Order> {
       ...cell,
       output: JSON.stringify(cell.output),
       type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
-      price: Number(cell.price),
+      price: cell.price.toString(16).padStart(16, '0'),
     })
 }
 

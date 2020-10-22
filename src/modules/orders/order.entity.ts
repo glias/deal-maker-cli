@@ -16,8 +16,8 @@ export class Order {
   @Column('int8')
   type!: OrderType
 
-  @Column('int')
-  price!: number
+  @Column('varchar', { length: 16 })
+  price!: string
 
   @Column('int', { name: 'block_number' })
   blockNumber!: number

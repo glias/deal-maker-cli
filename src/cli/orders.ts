@@ -1,8 +1,8 @@
 import DealMaker from '..'
-import { Order } from '../modules/orders/order.entity'
+import { OrderDto } from '../modules/orders/order.dto'
 import { logger } from '../utils'
 
-const formatOrder = (order?: Order) => {
+const formatOrder = (order?: OrderDto) => {
   return `| ${order?.price.toString().padEnd(20)} ${order?.blockNumber.toString().padEnd(10)}|`
 }
 const header = () => {
