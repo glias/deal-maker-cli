@@ -2,10 +2,11 @@ import { injectable } from 'inversify'
 import { getConnection } from 'typeorm'
 import type { Cell } from '@ckb-lumos/base'
 import OrderRepository from './order.repository'
+import { OrderType } from './order.entity'
+import { OrderDto } from './order.dto'
 import DealRepository from './deal.repository'
-import { Order, OrderType } from './order.entity'
-import { logger, parseOrderCell } from '../../utils'
 import { Deal, DealStatus } from './deal.entity'
+import { logger, parseOrderCell } from '../../utils'
 
 const logTag = `\x1b[35m[Orders Service]\x1b[0m`
 
@@ -33,14 +34,14 @@ class OrdersService {
   /**
    * @param pageNo start from 0
    */
-  public getAskOrders = (pageNo = 0): Promise<Order[]> => {
+  public getAskOrders = (pageNo = 0): Promise<OrderDto[]> => {
     return this.#orderRepository.getOrders(pageNo, OrderType.Ask)
   }
 
   /**
    * @param pageNo start from 0
    */
-  public getBidOrders = (pageNo = 0): Promise<Order[]> => {
+  public getBidOrders = (pageNo = 0): Promise<OrderDto[]> => {
     return this.#orderRepository.getOrders(pageNo, OrderType.Bid)
   }
 

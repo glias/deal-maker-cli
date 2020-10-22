@@ -6,7 +6,7 @@ export const askOrderWithLowerPrice: Order = {
   tokenId: 'token_id_ask',
   blockNumber: 1,
   type: '01',
-  price: BigInt(123),
+  price: BigInt(321) * BigInt(2 ** 55),
   output: {
     capacity: 'capacity_ask',
     lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
@@ -20,7 +20,7 @@ export const askOrderWithHigherPrice: Order = {
   tokenId: 'token_id_ask',
   blockNumber: 1,
   type: '01',
-  price: BigInt(321),
+  price: BigInt(100) * BigInt(2 ** 56),
   output: {
     capacity: 'capacity_ask',
     lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
@@ -34,7 +34,7 @@ export const bidOrderWithLowerPrice: Order = {
   tokenId: 'token_id_bid',
   blockNumber: 1,
   type: '00',
-  price: BigInt(123),
+  price: BigInt(321) * BigInt(2 ** 54),
   output: {
     capacity: 'capacity_bid',
     lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
@@ -48,7 +48,7 @@ export const bidOrderWithHigherPrice: Order = {
   tokenId: 'token_id_bid',
   blockNumber: 1,
   type: '00',
-  price: BigInt(321),
+  price: BigInt(100) * BigInt(2 ** 60),
   output: {
     capacity: 'capacity_bid',
     lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },

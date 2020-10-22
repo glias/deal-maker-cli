@@ -57,8 +57,8 @@ describe('Test order repository', () => {
     const bidOrders = await orderRepository.getOrders(0, OrderType.Bid)
     expect(askOrders).toHaveLength(2)
     expect(bidOrders).toHaveLength(2)
-    expect(askOrders[0].price).toBeLessThan(askOrders[1].price)
-    expect(bidOrders[0].price).toBeGreaterThan(bidOrders[1].price)
+    expect(BigInt(askOrders[0].price)).toBeLessThan(BigInt(askOrders[1].price))
+    expect(BigInt(bidOrders[0].price)).toBeGreaterThan(BigInt(bidOrders[1].price))
   })
 
   describe('flush all orders', () => {
