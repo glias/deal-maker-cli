@@ -34,15 +34,17 @@ class OrdersService {
   /**
    * @param pageNo start from 0
    */
-  public getAskOrders = (pageNo = 0): Promise<OrderDto[]> => {
-    return this.#orderRepository.getOrders(pageNo, OrderType.Ask)
+  public getAskOrders = async (pageNo = 0): Promise<OrderDto[]> => {
+    const pendingOrderIds = await this.#dealRepository.getPendingOrderIds()
+    return this.#orderRepository.getOrders(pageNo, OrderType.Ask, pendingOrderIds)
   }
 
   /**
    * @param pageNo start from 0
    */
-  public getBidOrders = (pageNo = 0): Promise<OrderDto[]> => {
-    return this.#orderRepository.getOrders(pageNo, OrderType.Bid)
+  public getBidOrders = async (pageNo = 0): Promise<OrderDto[]> => {
+    const pendingOrderIds = await this.#dealRepository.getPendingOrderIds()
+    return this.#orderRepository.getOrders(pageNo, OrderType.Bid, pendingOrderIds)
   }
 
   public flushOrders = (cells: Array<Cell>) => {

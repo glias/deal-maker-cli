@@ -44,21 +44,32 @@ describe('Test order repository', () => {
     expect(count).toBe(0)
   })
 
-  it('get orders', async () => {
-    for (const order of [
-      askOrderWithHigherPrice,
-      askOrderWithLowerPrice,
-      bidOrderWithLowerPrice,
-      bidOrderWithHigherPrice,
-    ]) {
-      await orderRepository.saveOrder(order)
-    }
-    const askOrders = await orderRepository.getOrders(0, OrderType.Ask)
-    const bidOrders = await orderRepository.getOrders(0, OrderType.Bid)
-    expect(askOrders).toHaveLength(2)
-    expect(bidOrders).toHaveLength(2)
-    expect(BigInt(askOrders[0].price)).toBeLessThan(BigInt(askOrders[1].price))
-    expect(BigInt(bidOrders[0].price)).toBeGreaterThan(BigInt(bidOrders[1].price))
+  describe('get orders', () => {
+    it('should return all orders', async () => {
+      for (const order of [
+        askOrderWithHigherPrice,
+        askOrderWithLowerPrice,
+        bidOrderWithLowerPrice,
+        bidOrderWithHigherPrice,
+      ]) {
+        await orderRepository.saveOrder(order)
+      }
+      const askOrders = await orderRepository.getOrders(0, OrderType.Ask)
+      const bidOrders = await orderRepository.getOrders(0, OrderType.Bid)
+      expect(askOrders).toHaveLength(2)
+      expect(bidOrders).toHaveLength(2)
+      expect(BigInt(askOrders[0].price)).toBeLessThan(BigInt(askOrders[1].price))
+      expect(BigInt(bidOrders[0].price)).toBeGreaterThan(BigInt(bidOrders[1].price))
+    })
+
+    it('should skip pending orders', async () => {
+      await orderRepository.saveOrder(askOrderWithHigherPrice)
+      await orderRepository.saveOrder(askOrderWithLowerPrice)
+
+      const askOrders = await orderRepository.getOrders(0, OrderType.Ask, [askOrderWithHigherPrice.id])
+      expect(askOrders).toHaveLength(1)
+      expect(askOrders[0].id).toBe(askOrderWithLowerPrice.id)
+    })
   })
 
   describe('flush all orders', () => {
