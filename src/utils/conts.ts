@@ -5,7 +5,7 @@ export const INDEXER_DB = 'indexer-data'
 export const ORDER_SCRIPTS: any = {
   lock: {
     args: '0x',
-    code_hash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+    code_hash: '0xeef5d7b6f61dc21be89763907e6966f8b776f33e0bf718c2c718dea90f577dbf',
     hash_type: 'data',
   },
   type: {
