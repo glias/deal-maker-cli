@@ -86,7 +86,7 @@ describe('Test orders service', () => {
         blockNumber: +cellToSave.block_number,
         price: 50000000000,
         type: OrderType.Ask,
-        output: JSON.stringify(cellToSave.cell_output),
+        output: JSON.stringify({ ...cellToSave.cell_output, data: cellToSave.data }),
       })
     })
     it('should remove order', async () => {
