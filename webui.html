@@ -10,6 +10,9 @@
       crossorigin="anonymous"
     />
     <style>
+      table {
+        width: 100%;
+      }
 
       table.orders td:not(:first-child) {
         min-width: 120px;
@@ -28,6 +31,7 @@
     </style>
   </head>
   <body>
+    <h3>Ask Orders</h3>
     <table class="pure-table pure-table-bordered orders" id="ask-orders">
       <thead>
         <tr>
@@ -42,6 +46,7 @@
       <tbody></tbody>
     </table>
 
+    <h3>Bid Orders</h3>
     <table class="pure-table pure-table-bordered orders" id="bid-orders">
       <thead>
         <tr>
@@ -56,6 +61,7 @@
       <tbody></tbody>
     </table>
 
+    <h3>History</h3>
     <table class="pure-table pure-table-bordered" id="deals">
       <thead>
         <tr>
@@ -69,6 +75,7 @@
       <tbody></tbody>
     </table>
 
+    <h3>Config</h3>
     <table class="pure-table pure-table-bordered" id="config">
       <thead>
         <tr>
@@ -79,12 +86,47 @@
       <tbody></tbody>
     </table>
 
+    <hr />
+    <h3>Set Config</h3>
+
+    <form class="pure-form" id="remote-url">
+      <fieldset>
+        <legend>Set Remote URL</legend>
+        <input name="url" type="url" aria-label="remote url" placeholder="Remote URL" />
+        <button type="submit" class="pure-button pure-button-primary">Apply</button>
+      </fieldset>
+    </form>
+
+    <form class="pure-form" id="key-file">
+      <fieldset>
+        <legend>Set Key File</legend>
+        <input name="key" type="text" aria-label="key file" placeholder="Key File" />
+        <button type="submit" class="pure-button pure-button-primary">Apply</button>
+      </fieldset>
+    </form>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
     <script>
+      const socket = io()
       const askOrderTable = document.querySelector('#ask-orders tbody')
       const bidOrderTable = document.querySelector('#bid-orders tbody')
       const dealTable = document.querySelector('#deals tbody')
       const configTable = document.querySelector('#config tbody')
+      const remoteUrlForm = document.querySelector('#remote-url')
+      const keyFileForm = document.querySelector('#key-file')
+
+      remoteUrlForm.addEventListener('submit', e => {
+        e.preventDefault()
+        const { value } = e.target.url
+        socket.emit('set-config', 'url', value)
+        return false
+      })
+
+      keyFileForm.addEventListener('submit', e => {
+        e.preventDefault()
+        const { value } = e.target.key
+        socket.emit('set-config', 'keyFile', value)
+      })
 
       const updateOrderTable = (_table, _orders) => {
         const rows = _orders
@@ -137,7 +179,6 @@
         _table.innerHTML = rows
       }
 
-      const socket = io()
       socket.on('stat', stat => {
         updateOrderTable(askOrderTable, stat.askOrders)
         updateOrderTable(bidOrderTable, stat.bidOrders)
