@@ -15,9 +15,12 @@ export interface Stat {
   bidOrders: Array<Order>
   config: Pick<Config, 'keyFile' | 'remoteUrl' | 'feeRate' | 'tokenPairs'>
   deals: Array<Deal>
+  syncState: {
+    tip: number
+  }
 }
 
-const bootstrap = (onConnect: Function) => {
+const bootstrap = ({ onConnect, onSetConfig }: Record<'onConnect' | 'onSetConfig', Function>) => {
   const viewContent = fs.readFileSync(path.join(__dirname, '..', '..', 'webui.html'), 'utf-8')
   const server = http.createServer((_, res) => {
     res.setHeader('Content-Type', 'text/html')
@@ -26,8 +29,11 @@ const bootstrap = (onConnect: Function) => {
   })
 
   const io = Io(server)
-  io.on('connect', () => {
+  io.on('connect', socket => {
     onConnect()
+    socket.on('set-config', (key: string, value: string) => {
+      onSetConfig(key, value)
+    })
   })
 
   server.listen(WEB_UI_PORT, () => {

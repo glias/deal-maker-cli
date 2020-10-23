@@ -5,12 +5,12 @@ export const WEB_UI_PORT = 3000
 export const ORDER_SCRIPTS: any = {
   lock: {
     args: '0x',
-    code_hash: '0xeef5d7b6f61dc21be89763907e6966f8b776f33e0bf718c2c718dea90f577dbf',
-    hash_type: 'data',
+    code_hash: '0x6cfc6d734321ec13fcc90872158bcffa9e2b58482d76349c574178bcb22be6aa',
+    hash_type: 'type',
   },
   type: {
     args: '0x',
-    code_hash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+    code_hash: '0xc5e5dcf215925f7ef4dfaf5f4b4f105bc321c02776d6e7d52a1db3fcd9d011a4',
     hash_type: 'type',
   },
 }

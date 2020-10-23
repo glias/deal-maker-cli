@@ -1,5 +1,5 @@
 const mockLogger = { info: jest.fn() }
-const mockStartIndexer = jest.fn()
+const mockStartIndexer = jest.fn().mockReturnValue({ tip: () => Promise.resolve({ block_number: '0x0101' }) })
 const mockScanOrderCells = jest.fn()
 const mockSubscribeOrderCell = jest.fn()
 const mockCheckPendingDeals = jest.fn()
@@ -173,6 +173,13 @@ describe('Test tasks module', () => {
       it('should do nothing', async () => {
         expect(mockUpdateDealStatus).not.toBeCalled()
       })
+    })
+  })
+
+  describe('Test tasksService#getSyncState', () => {
+    it('should return state including tip', async () => {
+      const state = await tasksService.getSyncState()
+      expect(state).toEqual({ tip: 257 })
     })
   })
 })
