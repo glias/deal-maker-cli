@@ -146,9 +146,9 @@
           .map(
             (_order, _idx) =>
               `<tr>
-            <td>${_idx}</td>
+            <td>${_idx + 1}</td>
             <td>${_order.price}</td>
-            <td>${_order.capacity}</td>
+            <td>${BigInt(_order.capacity)}</td>
             <td>${_order.orderAmount}</td>
             <td>${_order.sudtAmount}</td>
             <td title=${_order.outPoint}>${_order.outPoint}</td>
@@ -163,7 +163,7 @@
           .map(
             (_deal, _idx) =>
               `<tr>
-            <td>${_idx}</td>
+            <td>${_idx + 1}</td>
             <td>${_deal.txHash}</td>
             <td>${_deal.fee}</td>
             <td>${_deal.status}</td>
