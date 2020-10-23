@@ -2,11 +2,21 @@ const mockLogger = { info: jest.fn() }
 const mockStartIndexer = jest.fn()
 const mockScanOrderCells = jest.fn()
 const mockSubscribeOrderCell = jest.fn()
+const mockCheckPendingDeals = jest.fn()
+const mockGetPendingDeals = jest.fn()
+const mockUpdateDealStatus = jest.fn()
+const mockCronConstructor = jest.fn()
+
+jest.setMock('cron', {
+  CronJob: mockCronConstructor,
+})
+
 jest.setMock('../../utils/', {
   logger: mockLogger,
   startIndexer: mockStartIndexer,
   scanOrderCells: mockScanOrderCells,
   subscribeOrderCell: mockSubscribeOrderCell,
+  checkPendingDeals: mockCheckPendingDeals,
 })
 
 import 'reflect-metadata'
@@ -15,9 +25,12 @@ import TasksService from '.'
 import ConfigService from '../config'
 import OrdersService from '../orders'
 import { container, modules } from '../../container'
+import { DealStatus } from '../orders/deal.entity'
+import { pendingDeal } from '../../mock'
 
 const MOCK_REMOTE_URL = 'mock_remote_url'
 const MOCK_INDEXER_PATH = 'mock_indexer_path'
+
 @injectable()
 class MockConfigService {
   getConfig = jest.fn().mockResolvedValue({ remoteUrl: MOCK_REMOTE_URL })
@@ -27,6 +40,8 @@ class MockConfigService {
 @injectable()
 class MockOrdersService {
   match = jest.fn()
+  getPendingDeals = mockGetPendingDeals
+  updateDealStatus = mockUpdateDealStatus
 }
 
 describe('Test tasks module', () => {
@@ -67,6 +82,10 @@ describe('Test tasks module', () => {
       expect(subscribeOrderCell).toBeCalledTimes(1)
       expect(mockOrdersService.match).toBeCalledTimes(1)
     })
+
+    it('should start a cron job', () => {
+      expect(mockCronConstructor).toBeCalledTimes(1)
+    })
   })
 
   describe('Test tasksService#startIndexer', () => {
@@ -98,6 +117,62 @@ describe('Test tasks module', () => {
     it('should call tasksService#log and subscribeOrderCell', () => {
       expect(mockLogger.info).toBeCalledWith('\x1b[35m[Tasks Service]\x1b[0m: Subscribe to order cell')
       expect(mockSubscribeOrderCell).toBeCalledTimes(1)
+    })
+  })
+
+  describe('Test tasksService#checkPendingDeals', () => {
+    beforeEach(async () => {
+      await tasksService.checkPendingDeals()
+    })
+    afterAll(() => {
+      mockGetPendingDeals.mockReset()
+      mockCheckPendingDeals.mockReset()
+    })
+
+    describe('done', () => {
+      beforeAll(() => {
+        mockGetPendingDeals.mockResolvedValueOnce([{ ...pendingDeal, createdAt: new Date() }])
+        mockCheckPendingDeals.mockResolvedValueOnce([true])
+      })
+
+      it('should set status to done', () => {
+        expect(mockUpdateDealStatus).toBeCalledTimes(1)
+        expect(mockUpdateDealStatus).toBeCalledWith(pendingDeal.txHash, DealStatus.Done)
+      })
+    })
+
+    describe('timeout', () => {
+      beforeAll(() => {
+        mockGetPendingDeals.mockResolvedValueOnce([{ ...pendingDeal, createdAt: new Date(0) }])
+        mockCheckPendingDeals.mockResolvedValueOnce([false])
+      })
+
+      it('should set status to timeout', async () => {
+        expect(mockUpdateDealStatus).toBeCalledTimes(1)
+        expect(mockUpdateDealStatus).toBeCalledWith(pendingDeal.txHash, DealStatus.TIMEOUT)
+      })
+    })
+
+    describe('pending', () => {
+      beforeAll(() => {
+        mockGetPendingDeals.mockResolvedValueOnce([{ ...pendingDeal, createdAt: new Date() }])
+        mockCheckPendingDeals.mockResolvedValueOnce([false])
+      })
+
+      it('should do nothing', async () => {
+        expect(mockUpdateDealStatus).not.toBeCalled()
+      })
+    })
+
+    describe('no pending deals', () => {
+      beforeAll(() => {
+        mockGetPendingDeals.mockResolvedValueOnce([])
+        mockCheckPendingDeals.mockResolvedValueOnce([])
+      })
+
+      it('should do nothing', async () => {
+        expect(mockUpdateDealStatus).not.toBeCalled()
+      })
     })
   })
 })

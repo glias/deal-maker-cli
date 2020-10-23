@@ -1,10 +1,11 @@
 import { injectable, inject, LazyServiceIdentifer } from 'inversify'
 import { Indexer } from '@ckb-lumos/indexer'
-// import { CronJob } from 'cron'
+import { CronJob } from 'cron'
 import { modules } from '../../container'
 import OrdersService from '../orders'
 import ConfigService from '../config'
-import { logger, startIndexer, scanOrderCells, subscribeOrderCell } from '../../utils'
+import { logger, startIndexer, scanOrderCells, subscribeOrderCell, checkPendingDeals } from '../../utils'
+import { DealStatus } from '../orders/deal.entity'
 
 const logTag = `\x1b[35m[Tasks Service]\x1b[0m`
 
@@ -13,10 +14,10 @@ class TasksService {
   readonly #ordersService: OrdersService
   readonly #configService: ConfigService
   #indexer!: Indexer
-  // readonly #schedule = {
-  //   match: '*/5 * * * * *',
-  //   sync: '*/10 * * * * *',
-  // }
+  readonly #schedule = {
+    match: '*/5 * * * * *',
+    checkPending: '*/10 * * * * *',
+  }
   #log = (msg: string) => {
     logger.info(`${logTag}: ${msg}`)
   }
@@ -34,23 +35,45 @@ class TasksService {
     await this.scanOrderCells()
     this.subscribeOrderCell()
     this.#ordersService.match()
-    // new CronJob(this.#schedule.match, this.#match, null, true)
-    // new CronJob(this.#schedule.sync, this.#sync, null, true)
+    new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
   }
 
-  startIndexer = async () => {
-    const remoteUrl = await this.#configService.getConfig().then(config => config.remoteUrl)
+  readonly startIndexer = async () => {
+    const nodeUrl = await this.#configService.getConfig().then(config => config.remoteUrl)
     const indexerDbPath = this.#configService.getDbPath().indexer
-    this.#indexer = await startIndexer(remoteUrl, indexerDbPath)
+    this.#indexer = await startIndexer(nodeUrl, indexerDbPath)
   }
 
-  scanOrderCells = async () => {
+  readonly scanOrderCells = async () => {
     return scanOrderCells(this.#indexer, this.#ordersService.flushOrders)
   }
 
-  subscribeOrderCell = async () => {
+  readonly subscribeOrderCell = async () => {
     this.#log(`Subscribe to order cell`)
     return subscribeOrderCell(this.#indexer, this.scanOrderCells)
+  }
+
+  readonly checkPendingDeals = async () => {
+    const pendingDeals = await this.#ordersService.getPendingDeals()
+    if (!pendingDeals.length) return
+
+    const nodeUrl = await this.#configService.getConfig().then(config => config.remoteUrl)
+    const checkResults = await checkPendingDeals(
+      nodeUrl,
+      pendingDeals.map(d => d.txHash),
+    )
+
+    const now = Date.now()
+    const TIMEOUT = 10 * 3600 // ms
+
+    for (let i = 0; i < pendingDeals.length; i++) {
+      const deal = pendingDeals[i]
+      if (checkResults[i]) {
+        await this.#ordersService.updateDealStatus(deal.txHash, DealStatus.Done)
+      } else if (now - deal.createdAt.getTime() >= TIMEOUT) {
+        await this.#ordersService.updateDealStatus(deal.txHash, DealStatus.TIMEOUT)
+      }
+    }
   }
 }
 
