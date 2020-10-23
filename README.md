@@ -20,6 +20,12 @@ nvm use 12
 npm install
 ```
 
+## Set Database Configuration
+
+```bash
+cp ormconfig.yml.example ormconfig.yml
+```
+
 ## Generate Migration
 
 ```bash
