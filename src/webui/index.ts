@@ -15,6 +15,9 @@ export interface Stat {
   bidOrders: Array<Order>
   config: Pick<Config, 'keyFile' | 'remoteUrl' | 'feeRate' | 'tokenPairs'>
   deals: Array<Deal>
+  syncState: {
+    tip: number
+  }
 }
 
 const bootstrap = ({ onConnect, onSetConfig }: Record<'onConnect' | 'onSetConfig', Function>) => {

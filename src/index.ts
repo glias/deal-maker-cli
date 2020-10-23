@@ -52,7 +52,9 @@ export default class DealMaker {
     this.#webUi = bootstrapWebUi({
       onConnect: this.syncWebUi,
       onSetConfig: (...args: Parameters<DealMaker['setConfig']>) => {
-        this.setConfig(...args).then(this.syncWebUi)
+        this.setConfig(...args)
+          .then(this.syncWebUi)
+          .then(() => process.exit(0))
       },
     })
     new CronJob('*/3 * * * * *', this.syncWebUi, null, true)
@@ -140,12 +142,13 @@ export default class DealMaker {
         createdAt: deal.createdAt.toISOString(),
       }
     }
-    const [askOrders, bidOrders, deals, config] = await Promise.all([
+    const [askOrders, bidOrders, deals, config, syncState] = await Promise.all([
       this.orderService.getAskOrders().then(orders => orders.map(orderParser)),
       this.orderService.getBidOrders().then(orders => orders.map(orderParser)),
       this.orderService.getDeals(0).then(deals => deals.map(dealParser)),
       this.configService.getConfig(),
+      this.tasksService.getSyncState(),
     ])
-    this.#webUi.stat({ askOrders, bidOrders, config, deals })
+    this.#webUi.stat({ askOrders, bidOrders, config, deals, syncState })
   }
 }

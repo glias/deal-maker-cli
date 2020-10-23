@@ -75,6 +75,17 @@
       <tbody></tbody>
     </table>
 
+    <h3>Sync State</h3>
+    <table class="pure-table pure-table-bordered" id="sync-state">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
     <h3>Config</h3>
     <table class="pure-table pure-table-bordered" id="config">
       <thead>
@@ -111,6 +122,7 @@
       const askOrderTable = document.querySelector('#ask-orders tbody')
       const bidOrderTable = document.querySelector('#bid-orders tbody')
       const dealTable = document.querySelector('#deals tbody')
+      const syncStateTable = document.querySelector('#sync-state tbody')
       const configTable = document.querySelector('#config tbody')
       const remoteUrlForm = document.querySelector('#remote-url')
       const keyFileForm = document.querySelector('#key-file')
@@ -119,6 +131,7 @@
         e.preventDefault()
         const { value } = e.target.url
         socket.emit('set-config', 'url', value)
+        window.alert('Please restart deal maker cli')
         return false
       })
 
@@ -179,12 +192,24 @@
         _table.innerHTML = rows
       }
 
+      const updateSyncStateTable = (_table, _state) => {
+        const rows = `
+          <tr>
+            <td>Tip</td>
+            <td>${_state.tip}</td>
+          </tr>
+        `
+        _table.innerHTML = rows
+      }
+
       socket.on('stat', stat => {
         updateOrderTable(askOrderTable, stat.askOrders)
         updateOrderTable(bidOrderTable, stat.bidOrders)
         updateDealTable(dealTable, stat.deals)
         updateConfigTable(configTable, stat.config)
+        updateSyncStateTable(syncStateTable, stat.syncState)
       })
+
     </script>
   </body>
 </html>
