@@ -4,6 +4,7 @@ export enum DealStatus {
   Pending,
   Done,
   Failed,
+  TIMEOUT,
 }
 
 @Entity()

@@ -1,13 +1,13 @@
 import Rpc from '@nervosnetwork/ckb-sdk-rpc'
 
-export const checkPendingDeals = async (url: string, txHashes: string[]) => {
-  const rpc = new Rpc(url)
+export const checkPendingDeals = async (rpcUrl: string, txHashes: string[]) => {
+  const rpc = new Rpc(rpcUrl)
   const requests: Array<['getTransaction', string]> = txHashes.map(hash => ['getTransaction', hash])
-  const batch = rpc.createBatchRequest(requests)
-  return batch
+  return rpc
+    .createBatchRequest(requests)
     .exec()
     .then(resList => resList.map(res => res.txStatus === 'committed'))
     .catch(() => {
-      return new Array(requests.length).fill(false)
+      return new Array<boolean>(requests.length).fill(false)
     })
 }
