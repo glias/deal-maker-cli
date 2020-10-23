@@ -10,15 +10,15 @@
     "start": "cross-env NODE_ENV=development ts-node src/cli run",
     "start:config": "cross-env NODE_ENV=development ts-node src/cli config",
     "start:watch": "nodemon",
-    "start:cli": "ts-node src/cli",
-    "start:prod": "cross-env NODE_ENV=production node lib/cli",
+    "start:cli": "ts-node src/cli run",
+    "start:prod": "cross-env NODE_ENV=production node lib/cli run",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "build": "cross-env NODE_ENV=production yarn run tsc",
     "clean": "npx rimraf lib && npx rimraf tsconfig.tsbuildinfo",
     "format": "prettier -w --ignore-unknown src/**/*",
-    "db:init": "typeorm migration:generate -c production -n CreateDatabase -d src/migrations"
+    "db:init": "typeorm migration:generate -c production -n CreateDatabase -d src/migrations && typeorm -c production migration:run"
   },
   "husky": {
     "hooks": {
