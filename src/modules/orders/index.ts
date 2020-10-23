@@ -67,6 +67,10 @@ class OrdersService {
     return this.#dealRepository.removeDeal(txHash)
   }
 
+  public getDeals = (pageNo: number) => {
+    return this.#dealRepository.getDeals(pageNo)
+  }
+
   public getPendingDeals = () => {
     return this.#dealRepository.getPendingDeals()
   }

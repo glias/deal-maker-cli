@@ -1,7 +1,7 @@
 export const DEFAULT_NODE_URL = 'http://localhost:8114'
 export const DEFAULT_FEE_PRICE = '1000'
 export const INDEXER_DB = 'indexer-data'
-
+export const WEB_UI_PORT = 3000
 export const ORDER_SCRIPTS: any = {
   lock: {
     args: '0x',

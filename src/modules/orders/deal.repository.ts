@@ -17,10 +17,23 @@ class DealRepository extends Repository<Deal> {
     return this.delete(txHash)
   }
 
+  getDeals(pageNo: number) {
+    return this.find({
+      skip: pageNo * this.#pageSize,
+      take: this.#pageSize,
+      order: {
+        createdAt: 'DESC',
+      },
+    })
+  }
+
   getDealsByStatus(status: DealStatus, pageNo: number) {
     return this.find({
       skip: pageNo * this.#pageSize,
       take: this.#pageSize,
+      order: {
+        createdAt: 'DESC',
+      },
       where: {
         status,
       },
