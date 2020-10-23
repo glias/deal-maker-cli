@@ -7,12 +7,14 @@ import { Config } from '../modules/config/config.entity'
 
 const logTag = `\x1b[35m[Web UI]\x1b[0m`
 
-type Order = Record<'price' | 'blockNumber' | 'sudtAmount' | 'orderAmount' | 'outPoint' | 'capacity', string>
+type Order = Record<'price' | 'sudtAmount' | 'orderAmount' | 'outPoint' | 'capacity', string>
+type Deal = Record<'txHash' | 'fee' | 'status' | 'createdAt', string>
 
 export interface Stat {
   askOrders: Array<Order>
   bidOrders: Array<Order>
   config: Pick<Config, 'keyFile' | 'remoteUrl' | 'feeRate' | 'tokenPairs'>
+  deals: Array<Deal>
 }
 
 const bootstrap = (onConnect: Function) => {

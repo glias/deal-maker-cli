@@ -4,28 +4,145 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Web UI</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/pure/2.0.3/pure-min.css"
+      crossorigin="anonymous"
+    />
+    <style>
+
+      table.orders td:not(:first-child) {
+        min-width: 120px;
+      }
+
+      table.deals td:not(:first-child) {
+        min-width: 120px;
+      }
+
+      table.orders tbody td:last-child {
+        max-width: 30px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    </style>
   </head>
   <body>
-    <ul id="events"></ul>
+    <table class="pure-table pure-table-bordered orders" id="ask-orders">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Price</th>
+          <th>Capacity</th>
+          <th>Order Amount</th>
+          <th>SUDT Amount</th>
+          <th>Out Point</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <table class="pure-table pure-table-bordered orders" id="bid-orders">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Price</th>
+          <th>Capacity</th>
+          <th>Order Amount</th>
+          <th>SUDT Amount</th>
+          <th>Out Point</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <table class="pure-table pure-table-bordered" id="deals">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tx Hash</th>
+          <th>Fee</th>
+          <th>Status</th>
+          <th>Created Time</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <table class="pure-table pure-table-bordered" id="config">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
     <script>
-      const $events = document.getElementById('events')
+      const askOrderTable = document.querySelector('#ask-orders tbody')
+      const bidOrderTable = document.querySelector('#bid-orders tbody')
+      const dealTable = document.querySelector('#deals tbody')
+      const configTable = document.querySelector('#config tbody')
 
-      const newItem = content => {
-        const item = document.createElement('li')
-        item.innerText = content
-        return item
+      const updateOrderTable = (_table, _orders) => {
+        const rows = _orders
+          .map(
+            (_order, _idx) =>
+              `<tr>
+            <td>${_idx}</td>
+            <td>${_order.price}</td>
+            <td>${_order.capacity}</td>
+            <td>${_order.orderAmount}</td>
+            <td>${_order.sudtAmount}</td>
+            <td title=${_order.outPoint}>${_order.outPoint}</td>
+            </tr>`,
+          )
+          .join('')
+        _table.innerHTML = rows
+      }
+
+      const updateDealTable = (_table, _deals) => {
+        const rows = _deals
+          .map(
+            (_deal, _idx) =>
+              `<tr>
+            <td>${_idx}</td>
+            <td>${_deal.txHash}</td>
+            <td>${_deal.fee}</td>
+            <td>${_deal.status}</td>
+            <td>${_deal.createdAt}</td>
+            </tr>`,
+          )
+          .join('')
+        _table.innerHTML = rows
+      }
+
+      const updateConfigTable = (_table, _config) => {
+        const rows = `
+        <tr>
+          <td>Remote URL</td>
+          <td>${_config.remoteUrl}</td>
+        </tr>
+        <tr>
+          <td>Key File</td>
+          <td>${_config.keyFile}</td>
+        </tr>
+        <tr>
+          <td>Fee Rate</td>
+          <td>${_config.feeRate}</td>
+        </tr>
+        `
+        _table.innerHTML = rows
       }
 
       const socket = io()
-
-      socket.on('connect', () => {
-        $events.appendChild(newItem('connect'))
-      })
-
       socket.on('stat', stat => {
-        console.log(stat)
+        updateOrderTable(askOrderTable, stat.askOrders)
+        updateOrderTable(bidOrderTable, stat.bidOrders)
+        updateDealTable(dealTable, stat.deals)
+        updateConfigTable(configTable, stat.config)
       })
     </script>
   </body>

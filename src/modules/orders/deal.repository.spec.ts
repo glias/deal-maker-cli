@@ -45,7 +45,14 @@ describe('Test deal repository', () => {
     expect(saved.status).toBe(DealStatus.Done)
   })
 
-  it('get orders by status', async () => {
+  it('get deals', async () => {
+    await dealRepository.saveDeal(pendingDeal)
+    await dealRepository.saveDeal(doneDeal)
+    const deals = await dealRepository.getDeals(0)
+    expect(deals).toHaveLength(2)
+  })
+
+  it('get deals by status', async () => {
     await dealRepository.saveDeal(doneDeal)
 
     const doneDeals = await dealRepository.getDealsByStatus(DealStatus.Done, 0)
