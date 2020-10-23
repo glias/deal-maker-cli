@@ -59,8 +59,8 @@ class OrdersService {
     return this.#dealRepository.saveDeal(deal)
   }
 
-  public changeDealStatus = (txHash: string, status: DealStatus) => {
-    return this.#dealRepository.changeDealStatus(txHash, status)
+  public updateDealStatus = (txHash: string, status: DealStatus) => {
+    return this.#dealRepository.updateDealStatus(txHash, status)
   }
 
   public removeDeal = (txHash: string) => {
