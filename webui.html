@@ -10,8 +10,29 @@
       crossorigin="anonymous"
     />
     <style>
+      * {
+        outline: none;
+      }
+      *::selection {
+        background: #111;
+        color: #fff;
+      }
+
       table {
         width: 100%;
+      }
+
+      details {
+        margin-bottom: 15px;
+      }
+
+      summary {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      summary h3 {
+        display: inline-block;
       }
 
       table.orders td:not(:first-child) {
@@ -31,90 +52,112 @@
     </style>
   </head>
   <body>
-    <h3>Ask Orders</h3>
-    <table class="pure-table pure-table-bordered orders" id="ask-orders">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Price</th>
-          <th>Capacity</th>
-          <th>Order Amount</th>
-          <th>SUDT Amount</th>
-          <th>Out Point</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <details open>
+      <summary><h3>Ask Orders</h3></summary>
+      <table class="pure-table pure-table-bordered orders" id="ask-orders">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Price</th>
+            <th>Capacity</th>
+            <th>Order Amount</th>
+            <th>SUDT Amount</th>
+            <th>Out Point</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
 
-    <h3>Bid Orders</h3>
-    <table class="pure-table pure-table-bordered orders" id="bid-orders">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Price</th>
-          <th>Capacity</th>
-          <th>Order Amount</th>
-          <th>SUDT Amount</th>
-          <th>Out Point</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <details open>
+      <summary>
+        <h3>Bid Orders</h3>
+      </summary>
+      <table class="pure-table pure-table-bordered orders" id="bid-orders">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Price</th>
+            <th>Capacity</th>
+            <th>Order Amount</th>
+            <th>SUDT Amount</th>
+            <th>Out Point</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
 
-    <h3>History</h3>
-    <table class="pure-table pure-table-bordered" id="deals">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Tx Hash</th>
-          <th>Fee</th>
-          <th>Status</th>
-          <th>Created Time</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <details open>
+      <summary>
+        <h3>History</h3>
+      </summary>
+      <table class="pure-table pure-table-bordered" id="deals">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tx Hash</th>
+            <th>Fee</th>
+            <th>Status</th>
+            <th>Created Time</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
 
-    <h3>Sync State</h3>
-    <table class="pure-table pure-table-bordered" id="sync-state">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <details open>
+      <summary>
+        <h3>Sync State</h3>
+      </summary>
+      <table class="pure-table pure-table-bordered" id="sync-state">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
 
-    <h3>Config</h3>
-    <table class="pure-table pure-table-bordered" id="config">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <details open>
+      <summary>
+        <h3>Config</h3>
+      </summary>
+      <table class="pure-table pure-table-bordered" id="config">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
 
     <hr />
 
-    <h3>Set Config</h3>
-    <form class="pure-form" id="remote-url">
-      <fieldset>
-        <legend>Set Remote URL</legend>
-        <input name="url" type="url" aria-label="remote url" placeholder="Remote URL" />
-        <button type="submit" class="pure-button pure-button-primary">Apply</button>
-      </fieldset>
-    </form>
+    <details>
+      <summary>
+        <h3>Set Config</h3>
+      </summary>
+      <form class="pure-form" id="remote-url">
+        <fieldset>
+          <legend>Set Remote URL</legend>
+          <input name="url" type="url" aria-label="remote url" placeholder="Remote URL" />
+          <button type="submit" class="pure-button pure-button-primary">Apply</button>
+        </fieldset>
+      </form>
 
-    <form class="pure-form" id="key-file">
-      <fieldset>
-        <legend>Set Key File</legend>
-        <input name="key" type="text" aria-label="key file" placeholder="Key File" />
-        <button type="submit" class="pure-button pure-button-primary">Apply</button>
-      </fieldset>
-    </form>
+      <form class="pure-form" id="key-file">
+        <fieldset>
+          <legend>Set Key File</legend>
+          <input name="key" type="text" aria-label="key file" placeholder="Key File" />
+          <button type="submit" class="pure-button pure-button-primary">Apply</button>
+        </fieldset>
+      </form>
+    </details>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
     <script>
@@ -209,7 +252,6 @@
         updateConfigTable(configTable, stat.config)
         updateSyncStateTable(syncStateTable, stat.syncState)
       })
-
     </script>
   </body>
 </html>
