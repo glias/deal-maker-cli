@@ -104,10 +104,10 @@ describe('Test orders service', () => {
       expect(count).toBe(1)
     })
 
-    it('should change deal status', async () => {
+    it('should update deal status', async () => {
       let saved = await ordersService.saveDeal(DEAL)
       expect(saved.status).toBe(DealStatus.Pending)
-      await ordersService.changeDealStatus(saved.txHash, DealStatus.Done)
+      await ordersService.updateDealStatus(saved.txHash, DealStatus.Done)
       saved = await dealRepository.findOne(saved.txHash)
       expect(saved.status).toBe(DealStatus.Done)
     })

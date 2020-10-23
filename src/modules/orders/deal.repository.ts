@@ -10,7 +10,7 @@ class DealRepository extends Repository<Deal> {
     const dealTosave: Deal = this.create(deal)
     return this.save(dealTosave)
   }
-  changeDealStatus(txHash: string, status: DealStatus) {
+  updateDealStatus(txHash: string, status: DealStatus) {
     return this.update(txHash, { status })
   }
   removeDeal(txHash: string) {
