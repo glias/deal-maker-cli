@@ -31,8 +31,6 @@ export default class DealMaker {
     return container.get<OrdersService>(modules[OrdersService.name])
   }
 
-  constructor() {}
-
   #bootstrap = async () => {
     if (!this.#ready) {
       try {
@@ -51,7 +49,12 @@ export default class DealMaker {
     this.#log(`Start with config ${JSON.stringify(config)}`)
     this.tasksService.start()
     // start web ui
-    this.#webUi = bootstrapWebUi(this.syncWebUi)
+    this.#webUi = bootstrapWebUi({
+      onConnect: this.syncWebUi,
+      onSetConfig: (...args: Parameters<DealMaker['setConfig']>) => {
+        this.setConfig(...args).then(this.syncWebUi)
+      },
+    })
     new CronJob('*/3 * * * * *', this.syncWebUi, null, true)
   }
 
