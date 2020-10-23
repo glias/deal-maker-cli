@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web UI</title>
+  </head>
+  <body>
+    <ul id="events"></ul>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.1/socket.io.js"></script>
+    <script>
+      const $events = document.getElementById('events')
+
+      const newItem = content => {
+        const item = document.createElement('li')
+        item.innerText = content
+        return item
+      }
+
+      const socket = io()
+
+      socket.on('connect', () => {
+        $events.appendChild(newItem('connect'))
+      })
+
+      socket.on('stat', stat => {
+        console.log(stat)
+      })
+    </script>
+  </body>
+</html>

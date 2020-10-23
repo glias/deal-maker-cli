@@ -44,6 +44,6 @@ export const subscribeOrderCell = async (indexer: Indexer, handler: Function) =>
     timer = setTimeout(() => {
       logger.info(`${logTag}: Transaction detected`)
       handler()
-    }, 3000)
+    }, 1000)
   })
 }

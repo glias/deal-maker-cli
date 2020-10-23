@@ -1,15 +1,19 @@
 import 'reflect-metadata'
 import fs from 'fs'
+import { CronJob } from 'cron'
 import boostrap from './bootstrap'
 import { container, modules } from './container'
-import { logger } from './utils'
+import { logger, parseOrderData } from './utils'
 import ConfigService from './modules/config'
 import TasksService from './modules/tasks'
 import OrdersService from './modules/orders'
+import bootstrapWebUi from './webui'
+import { OrderDto } from './modules/orders/order.dto'
 
 const logTag = `\x1b[35m[Deal Maker]\x1b[0m`
 export default class DealMaker {
   #ready = false
+  #webUi: ReturnType<typeof bootstrapWebUi>
   #log = (msg: string) => {
     logger.info(`${logTag}: ${msg}`)
   }
@@ -26,10 +30,15 @@ export default class DealMaker {
     return container.get<OrdersService>(modules[OrdersService.name])
   }
 
+  constructor() {
+    this.#webUi = bootstrapWebUi(this.syncWebUi)
+  }
+
   #bootstrap = async () => {
     if (!this.#ready) {
       try {
         await boostrap()
+        new CronJob('*/10 * * * * *', this.syncWebUi, null, true)
         this.#ready = true
       } catch (err) {
         logger.error(err)
@@ -93,5 +102,37 @@ export default class DealMaker {
     } catch (err) {
       logger.warn(err.message)
     }
+  }
+
+  public syncWebUi = async () => {
+    const orderParser = (order: OrderDto) => {
+      try {
+        const output = JSON.parse(order.output)
+        const { sudtAmount, orderAmount } = parseOrderData(output.data)
+        return {
+          price: order.price.toString(),
+          blockNumber: order.blockNumber.toString(),
+          sudtAmount: sudtAmount.toString(),
+          orderAmount: orderAmount.toString(),
+          outPoint: order.id,
+          capacity: output.capacity,
+        }
+      } catch (err) {
+        return {
+          price: '',
+          blockNumber: '',
+          sudtAmount: '',
+          orderAmount: '',
+          outPoint: '',
+          capacity: '',
+        }
+      }
+    }
+    const [askOrders, bidOrders, config] = await Promise.all([
+      this.orderService.getAskOrders().then(orders => orders.map(orderParser)),
+      this.orderService.getBidOrders().then(orders => orders.map(orderParser)),
+      this.configService.getConfig(),
+    ])
+    this.#webUi.stat({ askOrders, bidOrders, config })
   }
 }
