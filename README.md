@@ -1,4 +1,4 @@
-# Deal Maker Cli
+# Deal Maker CLI
 
 ![](https://img.shields.io/badge/Platform-MacOS%20%7C%20Linux-brightgreen)
 ![](https://img.shields.io/badge/Node.js-v12-brightgreen)
@@ -18,6 +18,12 @@ nvm use 12
 
 ```bash
 npm install
+```
+
+## Set Database Configuration
+
+```bash
+cp ormconfig.yml.example ormconfig.yml
 ```
 
 ## Generate Migration
