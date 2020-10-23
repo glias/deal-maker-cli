@@ -57,6 +57,7 @@
     "@ckb-lumos/indexer": "0.13.1",
     "@nervosnetwork/ckb-sdk-core": "0.36.2",
     "@nervosnetwork/ckb-sdk-rpc": "0.36.2",
+    "@nervosnetwork/ckb-sdk-utils": "0.36.2",
     "class-validator": "0.12.2",
     "commander": "6.1.0",
     "cron": "1.8.2",

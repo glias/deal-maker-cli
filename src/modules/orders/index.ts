@@ -23,18 +23,12 @@ namespace Cell {
 
 namespace Order {
   export interface Struct {
-    cell_output: {
-      capacity: string
-      lock: object
-      type: object
-    }
-    out_point: {
-      tx_hash: string
-      index: string
-    }
-    block_hash: string
-    block_number: string
-    data: string
+    id: string
+    tokenId: string
+    blockNumber: number
+    type: string
+    price: bigint
+    output: string
     part?: boolean
   }
 }
@@ -73,13 +67,13 @@ class OrdersService {
     // 5. bid order length 0, askOrderList not part
     // 6. ask length and bid length both not 0
     if (askOrderList.length == 0 && bidOrderList[0][2].part) {
-      const bidOrderStruct = bidOrderList[0][2]
+      const bidOrderOutput = JSON.parse(bidOrderList[0][2].output)
       const bidOriginalScript = {
-        lock: bidOrderStruct.cell_output.lock,
-        type: bidOrderStruct.cell_output.type,
+        lock: bidOrderOutput.lock,
+        type: bidOrderOutput.type,
       }
       this.pushOutputsCellAndData(
-        { capacity: bidOrderStruct.cell_output.capacity, data: bidOrderStruct.data },
+        { capacity: bidOrderOutput.cell_output.capacity, data: bidOrderOutput.data },
         bidOriginalScript,
       )
       this.pushDealerMakerCellAndData()
@@ -87,15 +81,12 @@ class OrdersService {
       // sign_and_send()
     }
     if (bidOrderList.length == 0 && askOrderList[0][2].part) {
-      const askOrderStruct = askOrderList[0][2]
+      const askOrderOutput = JSON.parse(askOrderList[0][2].output)
       const askOriginalScript = {
-        lock: askOrderStruct.cell_output.lock,
-        type: askOrderStruct.cell_output.type,
+        lock: askOrderOutput.lock,
+        type: askOrderOutput.type,
       }
-      this.pushOutputsCellAndData(
-        { capacity: askOrderStruct.cell_output.capacity, data: askOrderStruct.data },
-        askOriginalScript,
-      )
+      this.pushOutputsCellAndData({ capacity: askOrderOutput.capacity, data: askOrderOutput.data }, askOriginalScript)
       this.pushDealerMakerCellAndData()
       return this.outputsCells
       // sign_and_send()
@@ -110,27 +101,29 @@ class OrdersService {
     const bidMatchOrder = bidOrderList[0]
     const [askPrice, askOrderBlockNum, askOrderStruct] = askMatchOrder
     const [bidPrice, bidOrderBlockNum, bidOrderStruct] = bidMatchOrder
+    const askOrderOutput = JSON.parse(askOrderStruct.output)
+    const bidOrderOutput = JSON.parse(bidOrderStruct.output)
     const bidOriginalScript = {
-      lock: bidOrderStruct.cell_output.lock,
-      type: bidOrderStruct.cell_output.type,
+      lock: bidOrderOutput.lock,
+      type: bidOrderOutput.type,
     }
     const askOriginalScript = {
-      lock: askOrderStruct.cell_output.lock,
-      type: askOrderStruct.cell_output.type,
+      lock: askOrderOutput.lock,
+      type: askOrderOutput.type,
     }
 
     if (askPrice > bidPrice) {
       if (this.outputsCells.length > 0) {
         if (askOrderList[0][2].part) {
           this.pushOutputsCellAndData(
-            { capacity: bidOrderStruct.cell_output.capacity, data: bidOrderStruct.data },
+            { capacity: bidOrderOutput.capacity, data: bidOrderOutput.data },
             bidOriginalScript,
           )
         }
 
         if (bidOrderList[0][2].part) {
           this.pushOutputsCellAndData(
-            { capacity: askOrderStruct.cell_output.capacity, data: askOrderStruct.data },
+            { capacity: askOrderOutput.capacity, data: askOrderOutput.data },
             bidOriginalScript,
           )
         }
@@ -144,18 +137,18 @@ class OrdersService {
     } else {
       const dealPrice: bigint = this.calDealPrice(askOrderBlockNum, bidOrderBlockNum, askPrice, bidPrice)
 
-      const bidSudtAmount: bigint = parseOrderData(bidOrderStruct.data).sudtAmount
-      const bidSudtOrderAmount: bigint = parseOrderData(bidOrderStruct.data).orderAmount
+      const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
+      const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
       const bidSpendCkbAmount: bigint = dealPrice * bidSudtOrderAmount
-      const bidOriginalCkbAmount: bigint = BigInt(bidOrderStruct.cell_output.capacity) / BigInt('1000000000')
+      const bidOriginalCkbAmount: bigint = BigInt(bidOrderOutput.capacity) / BigInt('1000000000')
 
-      const askSudtAmount: bigint = parseOrderData(askOrderStruct.data).sudtAmount
-      const askCkbOrderAmount: bigint = parseOrderData(askOrderStruct.data).orderAmount
+      const askSudtAmount: bigint = parseOrderData(askOrderOutput.data).sudtAmount
+      const askCkbOrderAmount: bigint = parseOrderData(askOrderOutput.data).orderAmount
       const askSpendSudtAmount: bigint = askCkbOrderAmount / dealPrice
       const askSudtOrderAmount: bigint = askCkbOrderAmount / askPrice
-      const askOriginalCkbAmount: bigint = BigInt(askOrderStruct.cell_output.capacity) / BigInt('1000000000')
+      const askOriginalCkbAmount: bigint = BigInt(askOrderOutput.capacity) / BigInt('1000000000')
 
-      this.pushInputCells(askOrderStruct, bidOrderStruct)
+      this.pushInputCells(askOrderStruct.id, askOrderStruct.part, bidOrderStruct.id, bidOrderStruct.part)
 
       if (bidSudtOrderAmount == askSudtOrderAmount) {
         const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
@@ -291,25 +284,25 @@ class OrdersService {
     }
   }
 
-  private pushInputCells(askMatchOrder: Order.Struct, bidMatchOrder: Order.Struct) {
-    if (askMatchOrder.part === undefined) {
-      const previousOutput = {
+  private pushInputCells(askId: string, askPart: undefined | boolean, bidId: string, bidPart: undefined | boolean) {
+    if (askPart === undefined) {
+      const previousInput = {
         previousOutput: {
-          txHash: askMatchOrder.out_point.tx_hash,
-          index: askMatchOrder.out_point.index,
+          txHash: askId.split('-')[0],
+          index: askId.split('-')[1],
         },
       }
 
-      this.inputCells.push(previousOutput)
+      this.inputCells.push(previousInput)
     }
-    if (!bidMatchOrder.part === undefined) {
-      const previousOutput = {
+    if (bidPart === undefined) {
+      const previousInput = {
         previousOutput: {
-          txHash: bidMatchOrder.out_point.tx_hash,
-          index: bidMatchOrder.out_point.index,
+          txHash: bidId.split('-')[0],
+          index: bidId.split('-')[1],
         },
       }
-      this.inputCells.push(previousOutput)
+      this.inputCells.push(previousInput)
     }
   }
 
