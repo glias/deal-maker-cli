@@ -6,6 +6,11 @@
 [![codecov](https://codecov.io/gh/glias/deal-maker-cli/branch/develop/graph/badge.svg)](https://codecov.io/gh/glias/deal-maker-cli)
 ![SNYK](https://github.com/glias/deal-maker-cli/workflows/SNYK/badge.svg)
 
+## Docs
+
+- [Developer Guide](./docs/Developer.md)
+- [Match Engine Detail](https://github.com/glias/deal-maker-cli/wiki/Deal-Maker-Matching-Details)
+
 ## Node.js
 
 Node.js 12 is required
