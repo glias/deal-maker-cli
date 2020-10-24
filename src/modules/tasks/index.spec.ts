@@ -80,11 +80,10 @@ describe('Test tasks module', () => {
       expect(startIndexer).toBeCalledTimes(1)
       expect(scanOrderCells).toBeCalledTimes(1)
       expect(subscribeOrderCell).toBeCalledTimes(1)
-      expect(mockOrdersService.match).toBeCalledTimes(1)
     })
 
     it('should start a cron job', () => {
-      expect(mockCronConstructor).toBeCalledTimes(1)
+      expect(mockCronConstructor).toBeCalledTimes(2)
     })
   })
 

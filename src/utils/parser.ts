@@ -31,7 +31,7 @@ export const parseOrderCell = (cell: Cell) => {
   const tokenId = cell.cell_output.type?.args || 'ckb'
   const orderData = parseOrderData(cell.data)
   const blockNumber = +cell.block_number!
-  const { type, price, orderAmount } = orderData
+  const { type, price, orderAmount, sudtAmount } = orderData
 
   return {
     id,
@@ -40,6 +40,7 @@ export const parseOrderCell = (cell: Cell) => {
     type,
     price,
     orderAmount,
+    sudtAmount,
     output: {
       ...cell.cell_output,
       data: cell.data,

@@ -47,7 +47,9 @@ class OrderRepository extends Repository<Order> {
   }
 
   #toCell = (cell: ReturnType<typeof parseOrderCell>) =>
-    cell.orderAmount === BigInt(0)
+    cell.orderAmount === BigInt(0) ||
+    (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
+    !['00', '01'].includes(cell.type)
       ? null
       : this.create({
           ...cell,

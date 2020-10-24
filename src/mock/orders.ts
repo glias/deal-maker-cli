@@ -10,6 +10,7 @@ export const askOrderWithLowerPrice: Order = {
   type: '01',
   price: BigInt(321) * BigInt(2 ** 55),
   orderAmount: BigInt(400_000_000_000),
+  sudtAmount: BigInt(1_000),
   output: {
     capacity: 'capacity_ask',
     lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
@@ -25,6 +26,7 @@ export const askOrderWithHigherPrice: Order = {
   type: '01',
   price: BigInt(100) * BigInt(2 ** 56),
   orderAmount: BigInt(100),
+  sudtAmount: BigInt(1_000),
   output: {
     capacity: 'capacity_ask',
     lock: { code_hash: 'code_hash_ask', hash_type: 'hash_type_ask' as any, args: 'args_ask' },
@@ -40,6 +42,7 @@ export const bidOrderWithLowerPrice: Order = {
   type: '00',
   price: BigInt(321) * BigInt(2 ** 54),
   orderAmount: BigInt(100),
+  sudtAmount: BigInt(1_000),
   output: {
     capacity: 'capacity_bid',
     lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
@@ -55,6 +58,7 @@ export const bidOrderWithHigherPrice: Order = {
   type: '00',
   price: BigInt(100) * BigInt(2 ** 60),
   orderAmount: BigInt(100),
+  sudtAmount: BigInt(1_000),
   output: {
     capacity: 'capacity_bid',
     lock: { code_hash: 'code_hash_bid', hash_type: 'hash_type_bid' as any, args: 'args_bid' },
@@ -119,6 +123,7 @@ export const askOrderList1: Array<OrderDto> = [
       '{"capacity":"0x2540be400","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"0xc8000000000000000000000000000000e803000000000000000000000000000000e876481700000001"}',
   },
 ]
+
 export const orderWithZeroAmount: Order = {
   id: 'id_order_with_zero_amount',
   tokenId: 'token_id_order_with_zero_amount',
@@ -126,6 +131,55 @@ export const orderWithZeroAmount: Order = {
   type: '00',
   price: BigInt(100),
   orderAmount: BigInt(0),
+  sudtAmount: BigInt('1000'),
+  output: {
+    capacity: 'capacity_order_with_zero_amount',
+    lock: {
+      code_hash: 'code_hash_order_with_zero_amount',
+      hash_type: 'hash_type_order_with_zero_amount' as any,
+      args: 'args_order_with_zero_amount',
+    },
+    type: {
+      code_hash: 'code_hash_order_with_zero_amount',
+      hash_type: 'hash_type_order_with_zero_amount' as any,
+      args: 'args_order_with_zero_amount',
+    },
+    data: '0x00',
+  },
+}
+
+export const orderWithWrongType: Order = {
+  id: 'id_order_with_zero_amount',
+  tokenId: 'token_id_order_with_zero_amount',
+  blockNumber: 2,
+  type: '02',
+  price: BigInt(100),
+  orderAmount: BigInt('1000'),
+  sudtAmount: BigInt('1000'),
+  output: {
+    capacity: 'capacity_order_with_zero_amount',
+    lock: {
+      code_hash: 'code_hash_order_with_zero_amount',
+      hash_type: 'hash_type_order_with_zero_amount' as any,
+      args: 'args_order_with_zero_amount',
+    },
+    type: {
+      code_hash: 'code_hash_order_with_zero_amount',
+      hash_type: 'hash_type_order_with_zero_amount' as any,
+      args: 'args_order_with_zero_amount',
+    },
+    data: '0x00',
+  },
+}
+
+export const orderWithAskButSudtAmountZero: Order = {
+  id: 'id_order_with_zero_amount',
+  tokenId: 'token_id_order_with_zero_amount',
+  blockNumber: 2,
+  type: '01',
+  price: BigInt(100),
+  orderAmount: BigInt('1000'),
+  sudtAmount: BigInt('0'),
   output: {
     capacity: 'capacity_order_with_zero_amount',
     lock: {

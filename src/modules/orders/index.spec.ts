@@ -33,15 +33,15 @@ describe('Test orders service', () => {
   })
 
   describe('Test orders', () => {
-    it('fully match after all order clear', async () => {
+    it('fully match after all order empty', async () => {
       expect(() => ordersService.match(askOrderList1, bidOrderList1)).not.toThrow()
     })
 
-    it('partly match after all order clear', async () => {
+    it('partly match after all order empty', async () => {
       expect(() => ordersService.match(askOrderList1, bidOrderList2)).not.toThrow()
     })
 
-    it('partly match after ask order remaining and bid order clear', async () => {
+    it('partly match after ask order remaining and bid order empty', async () => {
       expect(() => ordersService.match(askOrderList1, bidOrderList3)).not.toThrow()
     })
   })
