@@ -7,7 +7,6 @@ import { OrderType } from './order.entity'
 import { OrderDto } from './order.dto'
 import DealRepository from './deal.repository'
 import {
-  logger,
   parseOrderCell,
   parseOrderData,
   bigIntToUint128Le,
@@ -19,21 +18,22 @@ import {
 import { Deal, DealStatus } from './deal.entity'
 import fs from 'fs'
 import CKB from '@nervosnetwork/ckb-sdk-core'
-import { Indexer } from '@ckb-lumos/indexer'
+import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 
-const logTag = `\x1b[35m[Orders Service]\x1b[0m`
+interface CachedCell extends CKBComponents.CellIncludingOutPoint {
+  status: string
+  dataHash: string
+  type?: CKBComponents.Script | null
+}
+// const logTag = `\x1b[35m[Orders Service]\x1b[0m`
 
 @injectable()
 class OrdersService {
-  #log = (msg: string) => {
-    logger.info(`${logTag}: ${msg}`)
-  }
-
   #orderRepository = getConnection(process.env.NODE_ENV).getCustomRepository(OrderRepository)
   #dealRepository = getConnection(process.env.NODE_ENV).getCustomRepository(DealRepository)
 
   inputCells: Array<CKBComponents.CellInput> = []
-  witnesses: Array<string> = []
+  witnesses: Array<string | CKBComponents.WitnessArgs> = []
   outputsCells: Array<CKBComponents.CellOutput> = []
   outputsData: Array<string> = []
   dealMakerCapacityAmount: bigint = BigInt('0')
@@ -44,34 +44,46 @@ class OrdersService {
   priceRatio: bigint = BigInt('10000000000')
   dealMakerPublicKey: string = '0x688327ab52c054a99b30f2287de0f5ee67805ded'
   privateKey: string = ''
-  currentIndexer: any
+  cells: Array<CachedCell> = []
+  biggestCell: CachedCell | undefined
 
   public async prepareMatch(indexer: Indexer) {
     const ckb = new CKB(DEFAULT_NODE_URL)
-    this.privateKey = fs.readFileSync(PRIVATE_KEY_PATH).toString()
-    this.dealMakerPublicKey = ckb.utils.privateKeyToPublicKey(this.privateKey)
-    this.currentIndexer = indexer
-    // const args = `0x${ckb.utils.blake160(publicKey, 'hex')}`
-    // const { secp256k1Dep } = await ckb.loadDeps()
-    // const lockScript = { ...secp256k1Dep, args: args }
-    // const address = ckb.utils.pubkeyToAddress(publicKey)
-
-    const askOrderList = await this.getAskOrders()
-    const bidOrderList = await this.getBidOrders()
-
-    const dealMakerLockScript: CKBComponents.Script = {
+    this.privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf-8').trim()
+    const publicKey = ckb.utils.privateKeyToPublicKey(this.privateKey)
+    this.dealMakerPublicKey = `0x${ckb.utils.blake160(publicKey, 'hex')}`
+    const lock: CKBComponents.Script = {
       codeHash: '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8',
       hashType: 'type',
       args: this.dealMakerPublicKey,
     }
+    this.cells = await ckb.loadCells({ indexer, CellCollector, lock })
+    if (this.cells.length == 0) {
+      return
+    }
+    this.biggestCell = this.cells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
+    // const args = `0x${ckb.utils.blake160(this.dealMakerPublicKey, 'hex')}`
+    // const { secp256k1Dep } = await ckb.loadDeps()
+    // const lockScript = { ...secp256k1Dep, args: args }
+    // const address = ckb.utils.pubkeyToAddress(this.dealMakerPublicKey)
+
+    const askOrderList = await this.getAskOrders()
+    const bidOrderList = await this.getBidOrders()
 
     if (askOrderList.length == 0 || bidOrderList.length == 0) {
       return
     }
 
     const outputs = this.match(askOrderList, bidOrderList)
+
     if (outputs.length > 0) {
-      this.generateRawTxAndSend(dealMakerLockScript)
+      const lockScript: CKBComponents.Script = {
+        codeHash: '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8',
+        hashType: 'type',
+        args: this.dealMakerPublicKey,
+      }
+
+      this.generateRawTxAndSend(lockScript)
     }
   }
 
@@ -90,6 +102,7 @@ class OrdersService {
     const askOrderStruct = askMatchOrder
     const { price: bidPrice, blockNumber: bidOrderBlockNum } = bidMatchOrder
     const bidOrderStruct = bidMatchOrder
+
     const askCapacityPrice = (askPrice * this.shannonsRatio) / this.priceRatio
     const bidCapacityPrice = (bidPrice * this.shannonsRatio) / this.priceRatio
     const askOrderOutput = JSON.parse(askOrderStruct.output)
@@ -120,8 +133,6 @@ class OrdersService {
         }
 
         this.pushDealerMakerCellAndData()
-        console.info(this.outputsCells)
-        console.info(this.outputsData)
 
         return this.outputsCells
       } else {
@@ -138,19 +149,31 @@ class OrdersService {
 
       const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
       const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
-      const bidSpendCapacityAmount: bigint = dealPrice * bidSudtOrderAmount
+      if (bidSudtOrderAmount == BigInt('0')) {
+        bidOrderList.shift()
+        return this.match(askOrderList, bidOrderList)
+      }
+      const bidSpendCapacityAmount: bigint = (dealPrice / this.shannonsRatio) * bidSudtOrderAmount
       const bidOriginalCapacityAmount: bigint = BigInt(bidOrderOutput.capacity)
 
       const askSudtAmount: bigint = parseOrderData(askOrderOutput.data).sudtAmount
-      const askCapacityOrderAmount: bigint = parseOrderData(askOrderOutput.data).orderAmount * this.shannonsRatio
-      const askSpendSudtAmount: bigint = askCapacityOrderAmount / dealPrice
-      const askSudtOrderAmount: bigint = askCapacityOrderAmount / askCapacityPrice
+      const askCapacityOrderAmount: bigint = parseOrderData(askOrderOutput.data).orderAmount
+
+      if (askCapacityOrderAmount == BigInt('0')) {
+        askOrderList.shift()
+        return this.match(askOrderList, bidOrderList)
+      }
+
+      const askSpendSudtAmount: bigint = (askCapacityOrderAmount / dealPrice) * this.shannonsRatio
+      const askSudtOrderAmount: bigint = (askCapacityOrderAmount / askCapacityPrice) * this.shannonsRatio
       const askOriginalCapacityAmount: bigint = BigInt(askOrderOutput.capacity)
 
       this.pushInputCells(askOrderStruct.id, askOrderStruct.part, bidOrderStruct.id, bidOrderStruct.part)
 
       if (bidSudtOrderAmount == askSudtOrderAmount) {
+        console.info('full match')
         const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
+          bidPrice: bidPrice,
           bidSpendCapacityAmount: bidSpendCapacityAmount,
           bidSudtOrderAmount: bidSudtOrderAmount,
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
@@ -160,6 +183,7 @@ class OrdersService {
         bidOrderList.shift()
 
         const askDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
+          askPrice: askPrice,
           askSpendSudtAmount: askSpendSudtAmount,
           askCapacityOrderAmount: askCapacityOrderAmount,
           askOriginalCapacityAmount: askOriginalCapacityAmount,
@@ -168,8 +192,11 @@ class OrdersService {
         this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
         askOrderList.shift()
       } else if (bidSudtOrderAmount < askSudtOrderAmount) {
+        console.info('bid order full match')
+
         // done order
         const bidDoneCkbAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
+          bidPrice: bidPrice,
           bidSpendCapacityAmount: bidSpendCapacityAmount,
           bidSudtOrderAmount: bidSudtOrderAmount,
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
@@ -195,7 +222,10 @@ class OrdersService {
         askOrderList.shift()
         askOrderList.unshift(newAskOutput)
       } else {
+        console.info('ask order full match')
+
         const askDoneCkbAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
+          askPrice: askPrice,
           askSpendSudtAmount: askSpendSudtAmount,
           askSudtAmount: askSudtAmount,
           askOriginalCapacityAmount: askOriginalCapacityAmount,
@@ -225,10 +255,6 @@ class OrdersService {
 
       if (bidOrderList.length == 0 && askOrderList.length == 0) {
         this.pushDealerMakerCellAndData()
-
-        console.info(this.outputsCells)
-        console.info(this.outputsData)
-
         return this.outputsCells
       }
 
@@ -240,8 +266,6 @@ class OrdersService {
         }
         this.pushOutputsCellAndData({ capacity: bidOrderOutput.capacity, data: bidOrderOutput.data }, bidOriginalScript)
         this.pushDealerMakerCellAndData()
-        console.info(this.outputsCells)
-        console.info(this.outputsData)
         return this.outputsCells
       }
 
@@ -332,6 +356,17 @@ class OrdersService {
   }
 
   private pushInputCells(askId: string, askPart: undefined | boolean, bidId: string, bidPart: undefined | boolean) {
+    if (bidPart === undefined) {
+      const previousInput: CKBComponents.CellInput = {
+        previousOutput: {
+          txHash: bidId.split('-')[0],
+          index: bidId.split('-')[1],
+        },
+        since: '0x0',
+      }
+      this.inputCells.push(previousInput)
+      this.witnesses.push('0x')
+    }
     if (askPart === undefined) {
       const previousInput = {
         previousOutput: {
@@ -344,20 +379,10 @@ class OrdersService {
       this.inputCells.push(previousInput)
       this.witnesses.push('0x')
     }
-    if (bidPart === undefined) {
-      const previousInput: CKBComponents.CellInput = {
-        previousOutput: {
-          txHash: bidId.split('-')[0],
-          index: bidId.split('-')[1],
-        },
-        since: '0x0',
-      }
-      this.inputCells.push(previousInput)
-      this.witnesses.push('0x')
-    }
   }
 
   private calDoneBidCapacityAndSudt(args: {
+    bidPrice: bigint
     bidSpendCapacityAmount: bigint
     bidOriginalCapacityAmount: bigint
     bidSudtAmount: bigint
@@ -371,11 +396,14 @@ class OrdersService {
 
     return {
       capacity: '0x' + afterMatchBidCapacity.toString(16),
-      data: '0x' + bigIntToUint128Le(afterMatchBidSudtAmount),
+      data: `0x${bigIntToUint128Le(afterMatchBidSudtAmount)}${bigIntToUint128Le(BigInt('0'))}${toUint64Le(
+        args.bidPrice,
+      ).slice(2)}00`,
     }
   }
 
   private calDoneAskCapacityAndSudt(args: {
+    askPrice: bigint
     askSpendSudtAmount: bigint
     askSudtAmount: bigint
     askOriginalCapacityAmount: bigint
@@ -388,7 +416,9 @@ class OrdersService {
 
     return {
       capacity: '0x' + afterMatchAskCapacity.toString(16),
-      data: '0x' + bigIntToUint128Le(afterMatchAskSudtAmount),
+      data: `0x${bigIntToUint128Le(afterMatchAskSudtAmount)}${bigIntToUint128Le(BigInt('0'))}${toUint64Le(
+        args.askPrice,
+      ).slice(2)}01`,
     }
   }
 
@@ -483,23 +513,36 @@ class OrdersService {
   }
 
   private pushDealerMakerCellAndData() {
+    if (this.biggestCell == undefined) {
+      return
+    }
+    this.inputCells.unshift({ previousOutput: this.biggestCell.outPoint!, since: '0x0' })
+
     const lockScript: CKBComponents.Script = {
       codeHash: '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8',
       hashType: 'type',
       args: this.dealMakerPublicKey,
     }
+
     const dealMakerCell: CKBComponents.CellOutput = {
-      capacity: '0x' + (this.dealMakerCapacityAmount - this.shannonsRatio).toString(16),
+      capacity:
+        '0x' + (this.dealMakerCapacityAmount + BigInt(this.biggestCell.capacity) - BigInt('10000')).toString(16),
       lock: lockScript,
       type: this.outputsCells[0].type,
     }
-    this.outputsCells.push(dealMakerCell)
-    this.outputsData.push(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
+    this.outputsCells.unshift(dealMakerCell)
+    this.outputsData.unshift(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
+
     return lockScript
   }
 
-  private async generateRawTxAndSend(lockScript: CKBComponents.Script) {
-    const rawTransaction: CKBComponents.RawTransaction = {
+  private async generateRawTxAndSend(lock: any) {
+    this.witnesses.unshift({
+      lock: '',
+      inputType: '',
+      outputType: '',
+    })
+    const rawTransaction: CKBComponents.RawTransactionToSign = {
       version: '0x0',
       headerDeps: [],
       cellDeps: [
@@ -510,6 +553,14 @@ class OrdersService {
           },
           depType: 'code',
         },
+        {
+          outPoint: { txHash: '0x751f0d4591e6a2c7bd54bc7a9cf6e9e87d31bd8cf2af9f7dda38c9d8d8cc29ee', index: '0x0' },
+          depType: 'depGroup',
+        },
+        {
+          outPoint: { txHash: '0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37', index: '0x0' },
+          depType: 'depGroup',
+        },
       ],
       inputs: this.inputCells,
       witnesses: this.witnesses,
@@ -517,7 +568,13 @@ class OrdersService {
       outputsData: this.outputsData,
     }
 
-    const response = await signAndSendTransaction(rawTransaction, this.privateKey, lockScript, this.indexer)
+    console.info(JSON.stringify(rawTransaction, null, 2))
+
+    const response = await signAndSendTransaction(rawTransaction, this.privateKey, lock)
+    this.inputCells = []
+    this.witnesses = []
+    this.outputsCells = []
+    this.outputsData = []
     console.info(response)
   }
 }

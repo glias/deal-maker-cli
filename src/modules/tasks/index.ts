@@ -31,17 +31,20 @@ class TasksService {
   }
 
   start = async () => {
+    console.info('==========111')
     await this.startIndexer()
     await this.scanOrderCells()
     this.subscribeOrderCell()
-    this.#ordersService.prepareMatch(this.#indexer)
+    new CronJob(this.#schedule.match, () => this.#ordersService.prepareMatch(this.#indexer), null, true)
     new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
   }
 
   readonly startIndexer = async () => {
     const nodeUrl = await this.#configService.getConfig().then(config => config.remoteUrl)
     const indexerDbPath = this.#configService.getDbPath().indexer
+    console.info('============' + nodeUrl + indexerDbPath)
     this.#indexer = await startIndexer(nodeUrl, indexerDbPath)
+    console.info(this.#indexer)
   }
 
   readonly scanOrderCells = async () => {

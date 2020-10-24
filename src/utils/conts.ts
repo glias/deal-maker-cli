@@ -1,13 +1,14 @@
 export const DEFAULT_NODE_URL = 'http://localhost:8114'
 export const DEFAULT_FEE_PRICE = '1000'
 export const INDEXER_DB = 'indexer-data'
-export const PRIVATE_KEY_PATH = ''
+export const PRIVATE_KEY_PATH = '/Users/zmcNotafraid/dex/deal-maker-cli/private_key.txt'
+export const SUDT_TX_HASH = '0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591fc9825aab769'
 export const WEB_UI_PORT = 3000
 
 export const ORDER_SCRIPTS: any = {
   lock: {
     args: '0x',
-    code_hash: '0x6982301f72a13f64ed63cbb8985ca22f8f38f90405f86bf6b661f69a01a1dedf',
+    code_hash: '0x8d03e403d1e5c44e0b7fa44e98ec2b3da4c20c06f646119324004eec28f62289',
     hash_type: 'type',
   },
   type: {
