@@ -62,10 +62,6 @@ class OrdersService {
       return
     }
     this.biggestCell = this.cells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
-    // const args = `0x${ckb.utils.blake160(this.dealMakerPublicKey, 'hex')}`
-    // const { secp256k1Dep } = await ckb.loadDeps()
-    // const lockScript = { ...secp256k1Dep, args: args }
-    // const address = ckb.utils.pubkeyToAddress(this.dealMakerPublicKey)
 
     const askOrderList = await this.getAskOrders()
     const bidOrderList = await this.getBidOrders()
@@ -96,6 +92,11 @@ class OrdersService {
     // 5. bid order length 0, askOrderList not part
     // 6. ask length and bid length both not 0
 
+    if (askOrderList.length == 0 || bidOrderList.length == 0) {
+      console.info('no order need match')
+      return []
+    }
+
     const askMatchOrder = askOrderList[0]
     const bidMatchOrder = bidOrderList[0]
     const { price: askPrice, blockNumber: askOrderBlockNum } = askMatchOrder
@@ -119,6 +120,7 @@ class OrdersService {
     if (askPrice > bidPrice) {
       if (this.outputsCells.length > 0) {
         if (askOrderStruct.part) {
+          this.pushInputCells(bidOrderStruct.id, undefined)
           this.pushOutputsCellAndData(
             { capacity: bidOrderOutput.capacity, data: bidOrderOutput.data },
             bidOriginalScript,
@@ -126,6 +128,7 @@ class OrdersService {
         }
 
         if (bidOrderStruct.part) {
+          this.pushInputCells(askOrderStruct.id, undefined)
           this.pushOutputsCellAndData(
             { capacity: askOrderOutput.capacity, data: askOrderOutput.data },
             bidOriginalScript,
@@ -149,10 +152,12 @@ class OrdersService {
 
       const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
       const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
+
       if (bidSudtOrderAmount == BigInt('0')) {
         bidOrderList.shift()
         return this.match(askOrderList, bidOrderList)
       }
+
       const bidSpendCapacityAmount: bigint = (dealPrice / this.shannonsRatio) * bidSudtOrderAmount
       const bidOriginalCapacityAmount: bigint = BigInt(bidOrderOutput.capacity)
 
@@ -168,8 +173,6 @@ class OrdersService {
       const askSudtOrderAmount: bigint = (askCapacityOrderAmount / askCapacityPrice) * this.shannonsRatio
       const askOriginalCapacityAmount: bigint = BigInt(askOrderOutput.capacity)
 
-      this.pushInputCells(askOrderStruct.id, askOrderStruct.part, bidOrderStruct.id, bidOrderStruct.part)
-
       if (bidSudtOrderAmount == askSudtOrderAmount) {
         console.info('full match')
         const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
@@ -179,6 +182,7 @@ class OrdersService {
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
           bidSudtAmount: bidSudtAmount,
         })
+        this.pushInputCells(bidOrderStruct.id, bidOrderStruct.part)
         this.pushOutputsCellAndData(bidDoneCapacityAndSudt, bidOriginalScript)
         bidOrderList.shift()
 
@@ -189,6 +193,7 @@ class OrdersService {
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askSudtAmount: askSudtAmount,
         })
+        this.pushInputCells(askOrderStruct.id, askOrderStruct.part)
         this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
         askOrderList.shift()
       } else if (bidSudtOrderAmount < askSudtOrderAmount) {
@@ -202,6 +207,8 @@ class OrdersService {
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
           bidSudtAmount: bidSudtAmount,
         })
+
+        this.pushInputCells(bidOrderStruct.id, bidOrderStruct.part)
         this.pushOutputsCellAndData(bidDoneCkbAndSudt, bidOriginalScript)
         bidOrderList.shift()
 
@@ -231,6 +238,7 @@ class OrdersService {
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askCapacityOrderAmount: askCapacityOrderAmount,
         })
+        this.pushInputCells(askOrderStruct.id, askOrderStruct.part)
         this.pushOutputsCellAndData(askDoneCkbAndSudt, askOriginalScript)
         askOrderList.shift()
 
@@ -264,6 +272,8 @@ class OrdersService {
           lock: bidOrderOutput.lock,
           type: bidOrderOutput.type,
         }
+
+        this.pushInputCells(bidOrderStruct.id, undefined)
         this.pushOutputsCellAndData({ capacity: bidOrderOutput.capacity, data: bidOrderOutput.data }, bidOriginalScript)
         this.pushDealerMakerCellAndData()
         return this.outputsCells
@@ -275,6 +285,7 @@ class OrdersService {
           lock: askOrderOutput.lock,
           type: askOrderOutput.type,
         }
+        this.pushInputCells(bidOrderStruct.id, undefined)
         this.pushOutputsCellAndData({ capacity: askOrderOutput.capacity, data: askOrderOutput.data }, askOriginalScript)
         this.pushDealerMakerCellAndData()
         return this.outputsCells
@@ -355,27 +366,15 @@ class OrdersService {
     }
   }
 
-  private pushInputCells(askId: string, askPart: undefined | boolean, bidId: string, bidPart: undefined | boolean) {
-    if (bidPart === undefined) {
+  private pushInputCells(inputId: string, part: undefined | boolean) {
+    if (part === undefined) {
       const previousInput: CKBComponents.CellInput = {
         previousOutput: {
-          txHash: bidId.split('-')[0],
-          index: bidId.split('-')[1],
+          txHash: inputId.split('-')[0],
+          index: inputId.split('-')[1],
         },
         since: '0x0',
       }
-      this.inputCells.push(previousInput)
-      this.witnesses.push('0x')
-    }
-    if (askPart === undefined) {
-      const previousInput = {
-        previousOutput: {
-          txHash: askId.split('-')[0],
-          index: askId.split('-')[1],
-        },
-        since: '0x0',
-      }
-
       this.inputCells.push(previousInput)
       this.witnesses.push('0x')
     }
@@ -571,11 +570,19 @@ class OrdersService {
     console.info(JSON.stringify(rawTransaction, null, 2))
 
     const response = await signAndSendTransaction(rawTransaction, this.privateKey, lock)
+
+    this.clearGlobalVariables()
+
+    console.info('==============================')
+    console.info(response)
+    console.info('------------------------------')
+  }
+
+  private clearGlobalVariables() {
     this.inputCells = []
     this.witnesses = []
     this.outputsCells = []
     this.outputsData = []
-    console.info(response)
   }
 }
 

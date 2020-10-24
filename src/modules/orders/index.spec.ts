@@ -33,7 +33,7 @@ describe('Test orders service', () => {
   })
 
   describe('Test orders', () => {
-    it.only('fully match after all order clear', async () => {
+    it('fully match after all order clear', async () => {
       expect(() => ordersService.match(askOrderList1, bidOrderList1)).not.toThrow()
     })
 
