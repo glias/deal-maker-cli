@@ -5,7 +5,7 @@ export const WEB_UI_PORT = 3000
 export const ORDER_SCRIPTS: any = {
   lock: {
     args: '0x',
-    code_hash: '0x6982301f72a13f64ed63cbb8985ca22f8f38f90405f86bf6b661f69a01a1dedf',
+    code_hash: '0x8d03e403d1e5c44e0b7fa44e98ec2b3da4c20c06f646119324004eec28f62289',
     hash_type: 'type',
   },
   type: {
