@@ -4,7 +4,16 @@ import OrderRepository from './order.repository'
 import DealRepository from './deal.repository'
 import { OrderType } from './order.entity'
 import { DealStatus } from './deal.entity'
-import { bidCell, askCell, askOrderList1, bidOrderList1, bidOrderList2, bidOrderList3 } from '../../mock'
+import {
+  bidCell,
+  askCell,
+  doneDeal,
+  pendingDeal,
+  askOrderList1,
+  bidOrderList1,
+  bidOrderList2,
+  bidOrderList3,
+} from '../../mock'
 
 describe('Test orders service', () => {
   let connection: Connection
@@ -102,37 +111,40 @@ describe('Test orders service', () => {
     beforeEach(async () => {
       await dealRepository.clear()
     })
-    const DEAL = {
-      txHash: 'tx_hash',
-      orderIds: 'order_ids',
-      fee: 'fee',
-      status: DealStatus.Pending,
-    }
     it('should save deal', async () => {
-      await ordersService.saveDeal(DEAL)
+      await ordersService.saveDeal(pendingDeal)
       const count = await dealRepository.count()
       expect(count).toBe(1)
     })
 
     it('should update deal status', async () => {
-      let saved = await ordersService.saveDeal(DEAL)
+      let saved = await ordersService.saveDeal(pendingDeal)
       expect(saved.status).toBe(DealStatus.Pending)
       await ordersService.updateDealStatus(saved.txHash, DealStatus.Done)
       saved = await dealRepository.findOne(saved.txHash)
       expect(saved.status).toBe(DealStatus.Done)
     })
     it('should remove deal', async () => {
-      const saved = await ordersService.saveDeal(DEAL)
+      const saved = await ordersService.saveDeal(pendingDeal)
       let count = await dealRepository.count()
       expect(count).toBe(1)
       await ordersService.removeDeal(saved.txHash)
       count = await dealRepository.count()
       expect(count).toBe(0)
     })
+
+    it('should deals', async () => {
+      let deals = await ordersService.getDeals(0)
+      expect(deals).toHaveLength(0)
+      await ordersService.saveDeal(pendingDeal)
+      await ordersService.saveDeal(doneDeal)
+      deals = await ordersService.getDeals(0)
+      expect(deals).toHaveLength(2)
+    })
     it('should get pending deals', async () => {
       let pendingDeals = await ordersService.getPendingDeals()
       expect(pendingDeals).toHaveLength(0)
-      await ordersService.saveDeal(DEAL)
+      await ordersService.saveDeal(pendingDeal)
       pendingDeals = await ordersService.getPendingDeals()
       expect(pendingDeals).toHaveLength(1)
     })

@@ -10,15 +10,15 @@
     "start": "cross-env NODE_ENV=development ts-node src/cli run",
     "start:config": "cross-env NODE_ENV=development ts-node src/cli config",
     "start:watch": "nodemon",
-    "start:cli": "ts-node src/cli",
-    "start:prod": "cross-env NODE_ENV=production node lib/cli",
+    "start:cli": "ts-node src/cli run",
+    "start:prod": "cross-env NODE_ENV=production node lib/cli run",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "build": "cross-env NODE_ENV=production yarn run tsc",
     "clean": "npx rimraf lib && npx rimraf tsconfig.tsbuildinfo",
     "format": "prettier -w --ignore-unknown src/**/*",
-    "db:init": "typeorm migration:generate -c production -n CreateDatabase -d src/migrations"
+    "db:init": "typeorm migration:generate -c production -n CreateDatabase -d src/migrations && typeorm -c production migration:run"
   },
   "husky": {
     "hooks": {
@@ -40,7 +40,7 @@
     "@types/cron": "1.7.2",
     "@types/jest": "26.0.14",
     "@types/node": "14.11.8",
-    "@types/node-fetch": "2.5.7",
+    "@types/socket.io": "2.1.11",
     "cross-env": "7.0.2",
     "fetch-mock": "9.10.7",
     "fetch-mock-jest": "1.3.0",
@@ -62,8 +62,8 @@
     "commander": "6.1.0",
     "cron": "1.8.2",
     "inversify": "5.0.1",
-    "node-fetch": "2.6.1",
     "reflect-metadata": "0.1.13",
+    "socket.io": "2.3.0",
     "sqlite3": "5.0.0",
     "tslib": "2.0.3",
     "typeorm": "0.2.28",

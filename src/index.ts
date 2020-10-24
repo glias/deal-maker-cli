@@ -1,15 +1,20 @@
 import 'reflect-metadata'
 import fs from 'fs'
+import { CronJob } from 'cron'
 import boostrap from './bootstrap'
 import { container, modules } from './container'
-import { logger } from './utils'
+import { logger, parseOrderData } from './utils'
 import ConfigService from './modules/config'
 import TasksService from './modules/tasks'
 import OrdersService from './modules/orders'
+import bootstrapWebUi from './webui'
+import { OrderDto } from './modules/orders/order.dto'
+import { Deal, DealStatus } from './modules/orders/deal.entity'
 
 const logTag = `\x1b[35m[Deal Maker]\x1b[0m`
 export default class DealMaker {
   #ready = false
+  #webUi: ReturnType<typeof bootstrapWebUi> | undefined
   #log = (msg: string) => {
     logger.info(`${logTag}: ${msg}`)
   }
@@ -43,6 +48,16 @@ export default class DealMaker {
     const config = await this.configService.getConfig()
     this.#log(`Start with config ${JSON.stringify(config)}`)
     this.tasksService.start()
+    // start web ui
+    this.#webUi = bootstrapWebUi({
+      onConnect: this.syncWebUi,
+      onSetConfig: (...args: Parameters<DealMaker['setConfig']>) => {
+        this.setConfig(...args)
+          .then(this.syncWebUi)
+          .then(() => process.exit(0))
+      },
+    })
+    new CronJob('*/3 * * * * *', this.syncWebUi, null, true)
   }
 
   public getConfig = async () => {
@@ -93,5 +108,47 @@ export default class DealMaker {
     } catch (err) {
       logger.warn(err.message)
     }
+  }
+
+  public syncWebUi = async () => {
+    if (!this.#webUi) return
+
+    const orderParser = (order: OrderDto) => {
+      try {
+        const output = JSON.parse(order.output)
+        const { sudtAmount, orderAmount } = parseOrderData(output.data)
+        return {
+          price: order.price.toString(),
+          sudtAmount: sudtAmount.toString(),
+          orderAmount: orderAmount.toString(),
+          outPoint: order.id,
+          capacity: output.capacity,
+        }
+      } catch (err) {
+        return {
+          price: '',
+          sudtAmount: '',
+          orderAmount: '',
+          outPoint: '',
+          capacity: '',
+        }
+      }
+    }
+    const dealParser = (deal: Deal) => {
+      return {
+        txHash: deal.txHash,
+        fee: deal.fee,
+        status: DealStatus[deal.status],
+        createdAt: deal.createdAt.toISOString(),
+      }
+    }
+    const [askOrders, bidOrders, deals, config, syncState] = await Promise.all([
+      this.orderService.getAskOrders().then(orders => orders.map(orderParser)),
+      this.orderService.getBidOrders().then(orders => orders.map(orderParser)),
+      this.orderService.getDeals(0).then(deals => deals.map(dealParser)),
+      this.configService.getConfig(),
+      this.tasksService.getSyncState(),
+    ])
+    this.#webUi.stat({ askOrders, bidOrders, config, deals, syncState })
   }
 }

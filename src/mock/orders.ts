@@ -104,7 +104,7 @@ export const bidOrderList3: Array<OrderDto> = [
   },
 ]
 
-export const askOrderList1: Array<[bigint, number, object]> = [
+export const askOrderList1: Array<OrderDto> = [
   {
     id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
     tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',

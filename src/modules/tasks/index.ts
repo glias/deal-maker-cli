@@ -75,6 +75,11 @@ class TasksService {
       }
     }
   }
+
+  readonly getSyncState = async () => {
+    const tip = await this.#indexer.tip().then(tip => +tip.block_number)
+    return { tip }
+  }
 }
 
 export default TasksService
