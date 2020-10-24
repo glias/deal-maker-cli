@@ -42,7 +42,7 @@ class OrdersService {
   feeRatio: bigint = BigInt('1000')
   shannonsRatio: bigint = BigInt('100000000')
   priceRatio: bigint = BigInt('10000000000')
-  dealMakerPublicKey: string = '0x688327ab52c054a99b30f2287de0f5ee67805ded'
+  dealMakerPublicKey: string = ''
   privateKey: string = ''
   cells: Array<CachedCell> = []
   biggestCell: CachedCell | undefined
@@ -499,7 +499,6 @@ class OrdersService {
       type: this.outputsCells[0].type,
     }
     this.outputsCells.unshift(dealMakerCell)
-
     this.outputsData.unshift(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
   }
 
@@ -530,14 +529,33 @@ class OrdersService {
       outputsData: this.outputsData,
     }
 
-    this.clearGlobalVariables()
     console.info(JSON.stringify(rawTransaction, null, 2))
 
-    const response = await signAndSendTransaction(rawTransaction, this.privateKey, lock)
+    const orderIds: string = this.inputCells
+      .map((input: CKBComponents.CellInput) => `${input.previousOutput!.txHash}-${input.previousOutput!.index}`)
+      .join()
+    const fee: string = `${this.dealMakerCapacityAmount - BigInt('10000')}-${this.dealMakerSudtAmount}`
+    let deal = {
+      txHash: '',
+      orderIds: orderIds,
+      fee: fee,
+      status: DealStatus.Pending,
+    }
 
-    console.info('==============================')
-    console.info(response)
-    console.info('------------------------------')
+    try {
+      const response = await signAndSendTransaction(rawTransaction, this.privateKey, lock)
+
+      deal.txHash = response
+
+      console.info('==============================')
+      console.info(response)
+      console.info('------------------------------')
+    } catch (error) {
+      deal.status = DealStatus.Failed
+    }
+
+    this.saveDeal(deal)
+    this.clearGlobalVariables()
   }
 
   private clearGlobalVariables() {
@@ -545,6 +563,10 @@ class OrdersService {
     this.witnesses = []
     this.outputsCells = []
     this.outputsData = []
+    this.cells = []
+    this.biggestCell = undefined
+    this.dealMakerSudtAmount = BigInt('0')
+    this.dealMakerCapacityAmount = BigInt('0')
   }
 
   private stopMatchAndReturnOutputs(orderStruct: OrderDto) {
