@@ -7,6 +7,7 @@ import {
   askOrderWithHigherPrice,
   bidOrderWithHigherPrice,
   bidOrderWithLowerPrice,
+  orderWithZeroAmount,
 } from '../../mock'
 
 describe('Test order repository', () => {
@@ -26,12 +27,23 @@ describe('Test order repository', () => {
     await orderRepository.clear()
   })
 
-  it('save order', async () => {
-    let count = await orderRepository.count()
-    expect(count).toBe(0)
-    await orderRepository.saveOrder(askOrderWithLowerPrice)
-    count = await orderRepository.count()
-    expect(count).toBe(1)
+  describe('save order', () => {
+    it('should save order which has not zero order amount', async () => {
+      let count = await orderRepository.count()
+      expect(count).toBe(0)
+      await orderRepository.saveOrder(askOrderWithLowerPrice)
+      count = await orderRepository.count()
+      expect(count).toBe(1)
+    })
+
+    it('should not save order which has zero order amount', async () => {
+      let count = await orderRepository.count()
+      expect(count).toBe(0)
+      const res = await orderRepository.saveOrder(orderWithZeroAmount)
+      expect(res).toBeNull()
+      count = await orderRepository.count()
+      expect(count).toBe(0)
+    })
   })
 
   it('remove order', async () => {
@@ -73,9 +85,13 @@ describe('Test order repository', () => {
   })
 
   describe('flush all orders', () => {
-    beforeAll(async () => {
+    beforeEach(async () => {
       await orderRepository.saveOrder(askOrderWithHigherPrice)
       await orderRepository.saveOrder(askOrderWithLowerPrice)
+    })
+
+    afterEach(async () => {
+      await orderRepository.clear()
     })
 
     it('should flush ask orders with bid orders', async () => {
@@ -84,6 +100,14 @@ describe('Test order repository', () => {
       await orderRepository.flushAllOrders([bidOrderWithHigherPrice, bidOrderWithLowerPrice])
       orders = await orderRepository.find()
       expect(orders.map(o => o.type)).toEqual([OrderType.Bid, OrderType.Bid])
+    })
+
+    it('should skip orders which have zero order amount', async () => {
+      let orders = await orderRepository.find()
+      expect(orders.map(o => o.type)).toEqual([OrderType.Ask, OrderType.Ask])
+      await orderRepository.flushAllOrders([orderWithZeroAmount])
+      orders = await orderRepository.find()
+      expect(orders.map(o => o.type)).toEqual([])
     })
   })
 })
