@@ -92,11 +92,6 @@ class OrdersService {
     // 5. bid order length 0, askOrderList not part
     // 6. ask length and bid length both not 0
 
-    if (askOrderList.length == 0 || bidOrderList.length == 0) {
-      console.info('no order need match')
-      return []
-    }
-
     const askMatchOrder = askOrderList[0]
     const bidMatchOrder = bidOrderList[0]
     const { price: askPrice, blockNumber: askOrderBlockNum } = askMatchOrder
@@ -153,21 +148,11 @@ class OrdersService {
       const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
       const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
 
-      if (bidSudtOrderAmount == BigInt('0')) {
-        bidOrderList.shift()
-        return this.match(askOrderList, bidOrderList)
-      }
-
       const bidSpendCapacityAmount: bigint = (dealPrice / this.shannonsRatio) * bidSudtOrderAmount
       const bidOriginalCapacityAmount: bigint = BigInt(bidOrderOutput.capacity)
 
       const askSudtAmount: bigint = parseOrderData(askOrderOutput.data).sudtAmount
       const askCapacityOrderAmount: bigint = parseOrderData(askOrderOutput.data).orderAmount
-
-      if (askCapacityOrderAmount == BigInt('0')) {
-        askOrderList.shift()
-        return this.match(askOrderList, bidOrderList)
-      }
 
       const askSpendSudtAmount: bigint = (askCapacityOrderAmount / dealPrice) * this.shannonsRatio
       const askSudtOrderAmount: bigint = (askCapacityOrderAmount / askCapacityPrice) * this.shannonsRatio
@@ -267,28 +252,11 @@ class OrdersService {
       }
 
       if (askOrderList.length == 0 && bidOrderStruct.part) {
-        const bidOrderOutput = JSON.parse(bidOrderStruct.output)
-        const bidOriginalScript = {
-          lock: bidOrderOutput.lock,
-          type: bidOrderOutput.type,
-        }
-
-        this.pushInputCells(bidOrderStruct.id, undefined)
-        this.pushOutputsCellAndData({ capacity: bidOrderOutput.capacity, data: bidOrderOutput.data }, bidOriginalScript)
-        this.pushDealerMakerCellAndData()
-        return this.outputsCells
+        return this.stopMatchAndReturnOutputs(bidOrderStruct)
       }
 
       if (bidOrderList.length == 0 && askOrderStruct.part) {
-        const askOrderOutput = JSON.parse(askOrderStruct.output)
-        const askOriginalScript = {
-          lock: askOrderOutput.lock,
-          type: askOrderOutput.type,
-        }
-        this.pushInputCells(bidOrderStruct.id, undefined)
-        this.pushOutputsCellAndData({ capacity: askOrderOutput.capacity, data: askOrderOutput.data }, askOriginalScript)
-        this.pushDealerMakerCellAndData()
-        return this.outputsCells
+        return this.stopMatchAndReturnOutputs(askOrderStruct)
       }
 
       if (bidOrderList.length == 0 || askOrderList.length == 0) {
@@ -421,25 +389,6 @@ class OrdersService {
     }
   }
 
-  private transferScriptKey(originalScript: {
-    lock: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
-    type: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
-  }) {
-    const lockScript = {
-      codeHash: originalScript.lock.code_hash,
-      hashType: originalScript.lock.hash_type,
-      args: originalScript.lock.args,
-    }
-
-    const typeScript = {
-      codeHash: originalScript.type.code_hash,
-      hashType: originalScript.type.hash_type,
-      args: originalScript.type.args,
-    }
-
-    return { lock: lockScript, type: typeScript }
-  }
-
   private pushOutputsCellAndData(
     capacityAndSudt: { capacity: string; data: string },
     originalScript: {
@@ -447,7 +396,22 @@ class OrdersService {
       type: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
     },
   ) {
-    const newOutputCell = { ...{ capacity: capacityAndSudt.capacity }, ...this.transferScriptKey(originalScript) }
+    const parsedLockScript = {
+      codeHash: originalScript.lock.code_hash,
+      hashType: originalScript.lock.hash_type,
+      args: originalScript.lock.args,
+    }
+
+    const parsedTypeScript = {
+      codeHash: originalScript.type.code_hash,
+      hashType: originalScript.type.hash_type,
+      args: originalScript.type.args,
+    }
+
+    const newOutputCell = {
+      ...{ capacity: capacityAndSudt.capacity },
+      ...{ lock: parsedLockScript, type: parsedTypeScript },
+    }
     this.outputsCells.push(newOutputCell)
     this.outputsData.push(capacityAndSudt.data)
   }
@@ -515,14 +479,19 @@ class OrdersService {
     if (this.biggestCell == undefined) {
       return
     }
+
     this.inputCells.unshift({ previousOutput: this.biggestCell.outPoint!, since: '0x0' })
+    this.witnesses.unshift({
+      lock: '',
+      inputType: '',
+      outputType: '',
+    })
 
     const lockScript: CKBComponents.Script = {
       codeHash: '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8',
       hashType: 'type',
       args: this.dealMakerPublicKey,
     }
-
     const dealMakerCell: CKBComponents.CellOutput = {
       capacity:
         '0x' + (this.dealMakerCapacityAmount + BigInt(this.biggestCell.capacity) - BigInt('10000')).toString(16),
@@ -530,17 +499,11 @@ class OrdersService {
       type: this.outputsCells[0].type,
     }
     this.outputsCells.unshift(dealMakerCell)
-    this.outputsData.unshift(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
 
-    return lockScript
+    this.outputsData.unshift(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
   }
 
   private async generateRawTxAndSend(lock: any) {
-    this.witnesses.unshift({
-      lock: '',
-      inputType: '',
-      outputType: '',
-    })
     const rawTransaction: CKBComponents.RawTransactionToSign = {
       version: '0x0',
       headerDeps: [],
@@ -567,11 +530,10 @@ class OrdersService {
       outputsData: this.outputsData,
     }
 
+    this.clearGlobalVariables()
     console.info(JSON.stringify(rawTransaction, null, 2))
 
     const response = await signAndSendTransaction(rawTransaction, this.privateKey, lock)
-
-    this.clearGlobalVariables()
 
     console.info('==============================')
     console.info(response)
@@ -583,6 +545,19 @@ class OrdersService {
     this.witnesses = []
     this.outputsCells = []
     this.outputsData = []
+  }
+
+  private stopMatchAndReturnOutputs(orderStruct: OrderDto) {
+    const orderOutput = JSON.parse(orderStruct.output)
+    const originalScript = {
+      lock: orderOutput.lock,
+      type: orderOutput.type,
+    }
+
+    this.pushInputCells(orderStruct.id, undefined)
+    this.pushOutputsCellAndData({ capacity: orderOutput.capacity, data: orderOutput.data }, originalScript)
+    this.pushDealerMakerCellAndData()
+    return this.outputsCells
   }
 }
 
