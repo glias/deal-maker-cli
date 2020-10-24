@@ -86,6 +86,7 @@ typings/
 # Optional npm cache directory
 .npm
 
+
 # Optional eslint cache
 .eslintcache
 
@@ -183,5 +184,8 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Package-lock file
+package-lock.json
 
 # End of https://www.toptal.com/developers/gitignore/api/vscode,macos,windows,node

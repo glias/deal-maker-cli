@@ -5,6 +5,22 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch Program",
+      "program": "${workspaceFolder}/node_modules/.bin/ts-node",
+      "request": "launch",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "pwa-node",
+      "args": [
+        "src/cli",
+        "run"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Jest single run all tests",
