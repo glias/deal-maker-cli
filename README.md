@@ -31,18 +31,10 @@ npm install
 cp ormconfig.yml.example ormconfig.yml
 ```
 
-## Generate Migration
+## Initialize Project
 
 ```bash
-npm run db:init
-```
-
-A migration named `CreateDatabase` should be created in `src/migrations`.
-
-## Compile
-
-```bash
-npm run build
+npm run init
 ```
 
 ## Start Deal Maker

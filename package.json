@@ -18,7 +18,8 @@
     "build": "cross-env NODE_ENV=production yarn run tsc",
     "clean": "npx rimraf lib && npx rimraf tsconfig.tsbuildinfo",
     "format": "prettier -w --ignore-unknown src/**/*",
-    "db:init": "typeorm migration:generate -c production -n CreateDatabase -d src/migrations && typeorm -c production migration:run"
+    "db:init": "typeorm migration:generate -c production -n CreateDatabase -d src/migrations && typeorm -c production migration:run",
+    "init": "npm run build && npm run db:init && npm run build"
   },
   "husky": {
     "hooks": {
