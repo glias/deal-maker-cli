@@ -1,6 +1,8 @@
 export const DEFAULT_NODE_URL = 'http://localhost:8114'
 export const DEFAULT_FEE_PRICE = '1000'
 export const INDEXER_DB = 'indexer-data'
+export const PRIVATE_KEY_PATH = ''
+export const SUDT_TX_HASH = '0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591fc9825aab769'
 
 export const ORDER_SCRIPTS: any = {
   lock: {

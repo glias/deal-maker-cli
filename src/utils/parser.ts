@@ -46,7 +46,9 @@ export const parseOrderCell = (cell: Cell) => {
   }
 }
 
-export const bigIntToUint128Le = (arg: bigint) => {
-  const hex = arg.toString(16)
-  return Buffer.from(hex, 'hex').reverse().toString('hex').padEnd(32, '0')
+export const bigIntToUint128Le = (u128: bigint) => {
+  const buf = Buffer.alloc(16)
+  buf.writeBigUInt64LE(u128 & BigInt('0xFFFFFFFFFFFFFFFF'), 0)
+  buf.writeBigUInt64LE(u128 >> BigInt(64), 8)
+  return `${buf.toString('hex')}`
 }

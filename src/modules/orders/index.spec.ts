@@ -4,7 +4,7 @@ import OrderRepository from './order.repository'
 import DealRepository from './deal.repository'
 import { OrderType } from './order.entity'
 import { DealStatus } from './deal.entity'
-import { bidCell, askCell } from '../../mock'
+import { bidCell, askCell, askOrderList1, bidOrderList1, bidOrderList2, bidOrderList3 } from '../../mock'
 
 describe('Test orders service', () => {
   let connection: Connection
@@ -23,8 +23,18 @@ describe('Test orders service', () => {
     await connection.close()
   })
 
-  it('match orders', () => {
-    expect(() => ordersService.match()).not.toThrow()
+  describe('Test orders', () => {
+    it.only('fully match after all order clear', async () => {
+      expect(() => ordersService.match(askOrderList1, bidOrderList1)).not.toThrow()
+    })
+
+    it('partly match after all order clear', async () => {
+      expect(() => ordersService.match(askOrderList1, bidOrderList2)).not.toThrow()
+    })
+
+    it('partly match after ask order remaining and bid order clear', async () => {
+      expect(() => ordersService.match(askOrderList1, bidOrderList3)).not.toThrow()
+    })
   })
 
   describe('Test orders', () => {

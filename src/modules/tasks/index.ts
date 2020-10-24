@@ -34,7 +34,7 @@ class TasksService {
     await this.startIndexer()
     await this.scanOrderCells()
     this.subscribeOrderCell()
-    this.#ordersService.match()
+    this.#ordersService.prepareMatch(this.#indexer)
     new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
   }
 
