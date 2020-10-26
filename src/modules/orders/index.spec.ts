@@ -14,6 +14,7 @@ import {
   bidOrderList2,
   bidOrderList3,
 } from '../../mock'
+import { ADDRGETNETWORKPARAMS } from 'dns'
 
 describe('Test orders service', () => {
   let connection: Connection
@@ -33,7 +34,7 @@ describe('Test orders service', () => {
   })
 
   describe('Test orders', () => {
-    it('fully match after all order empty', async () => {
+    it.only('fully match after all order empty', async () => {
       expect(() => ordersService.match(askOrderList1, bidOrderList1)).not.toThrow()
     })
 

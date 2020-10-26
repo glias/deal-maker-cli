@@ -1,4 +1,5 @@
 import type { Cell } from '@ckb-lumos/base'
+import { toUint64Le } from '@nervosnetwork/ckb-sdk-utils/lib/convertors'
 
 const readBigUInt64LE = (rawHexString: string) => {
   return Buffer.from(rawHexString, 'hex').readBigUInt64LE().toString(16)
@@ -53,4 +54,10 @@ export const bigIntToUint128Le = (u128: bigint) => {
   buf.writeBigUInt64LE(u128 & BigInt('0xFFFFFFFFFFFFFFFF'), 0)
   buf.writeBigUInt64LE(u128 >> BigInt(64), 8)
   return `${buf.toString('hex')}`
+}
+
+export const formatOrderData = (currentSudtAmount: bigint, orderAmount: bigint, price: bigint, type: '00' | '01') => {
+  return `0x${bigIntToUint128Le(currentSudtAmount)}${bigIntToUint128Le(orderAmount)}${toUint64Le(price).slice(
+    2,
+  )}${type}`
 }

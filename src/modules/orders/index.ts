@@ -1,7 +1,6 @@
 import { injectable } from 'inversify'
 import { getConnection } from 'typeorm'
 import type { Cell } from '@ckb-lumos/base'
-import { toUint64Le } from '@nervosnetwork/ckb-sdk-utils/lib/convertors'
 import OrderRepository from './order.repository'
 import { OrderType } from './order.entity'
 import { OrderDto } from './order.dto'
@@ -14,6 +13,7 @@ import {
   signAndSendTransaction,
   PRIVATE_KEY_PATH,
   DEFAULT_NODE_URL,
+  formatOrderData,
 } from '../../utils'
 import { Deal, DealStatus } from './deal.entity'
 import fs from 'fs'
@@ -92,17 +92,17 @@ class OrdersService {
     // 5. bid order length 0, askOrderList not part
     // 6. ask length and bid length both not 0
 
-    const askMatchOrder = askOrderList[0]
-    const bidMatchOrder = bidOrderList[0]
+    let askMatchOrder = askOrderList[0]
+    let bidMatchOrder = bidOrderList[0]
+    console.info(askOrderList)
     const { price: askPrice, blockNumber: askOrderBlockNum } = askMatchOrder
-    const askOrderStruct = askMatchOrder
     const { price: bidPrice, blockNumber: bidOrderBlockNum } = bidMatchOrder
-    const bidOrderStruct = bidMatchOrder
 
     const askCapacityPrice = (askPrice * this.shannonsRatio) / this.priceRatio
     const bidCapacityPrice = (bidPrice * this.shannonsRatio) / this.priceRatio
-    const askOrderOutput = JSON.parse(askOrderStruct.output)
-    const bidOrderOutput = JSON.parse(bidOrderStruct.output)
+
+    const askOrderOutput = JSON.parse(askMatchOrder.output)
+    const bidOrderOutput = JSON.parse(bidMatchOrder.output)
     const bidOriginalScript = {
       lock: bidOrderOutput.lock,
       type: bidOrderOutput.type,
@@ -114,16 +114,16 @@ class OrdersService {
 
     if (askPrice > bidPrice) {
       if (this.outputsCells.length > 0) {
-        if (askOrderStruct.part) {
-          this.pushInputCells(bidOrderStruct.id, undefined)
+        if (askMatchOrder.part) {
+          this.pushInputCells(bidMatchOrder.id, undefined)
           this.pushOutputsCellAndData(
             { capacity: bidOrderOutput.capacity, data: bidOrderOutput.data },
             bidOriginalScript,
           )
         }
 
-        if (bidOrderStruct.part) {
-          this.pushInputCells(askOrderStruct.id, undefined)
+        if (bidMatchOrder.part) {
+          this.pushInputCells(askMatchOrder.id, undefined)
           this.pushOutputsCellAndData(
             { capacity: askOrderOutput.capacity, data: askOrderOutput.data },
             bidOriginalScript,
@@ -147,13 +147,11 @@ class OrdersService {
 
       const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
       const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
-
       const bidSpendCapacityAmount: bigint = (dealPrice / this.shannonsRatio) * bidSudtOrderAmount
       const bidOriginalCapacityAmount: bigint = BigInt(bidOrderOutput.capacity)
 
       const askSudtAmount: bigint = parseOrderData(askOrderOutput.data).sudtAmount
       const askCapacityOrderAmount: bigint = parseOrderData(askOrderOutput.data).orderAmount
-
       const askSpendSudtAmount: bigint = (askCapacityOrderAmount / dealPrice) * this.shannonsRatio
       const askSudtOrderAmount: bigint = (askCapacityOrderAmount / askCapacityPrice) * this.shannonsRatio
       const askOriginalCapacityAmount: bigint = BigInt(askOrderOutput.capacity)
@@ -167,7 +165,7 @@ class OrdersService {
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
           bidSudtAmount: bidSudtAmount,
         })
-        this.pushInputCells(bidOrderStruct.id, bidOrderStruct.part)
+        this.pushInputCells(bidMatchOrder.id, bidMatchOrder.part)
         this.pushOutputsCellAndData(bidDoneCapacityAndSudt, bidOriginalScript)
         bidOrderList.shift()
 
@@ -178,14 +176,14 @@ class OrdersService {
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askSudtAmount: askSudtAmount,
         })
-        this.pushInputCells(askOrderStruct.id, askOrderStruct.part)
+        this.pushInputCells(askMatchOrder.id, askMatchOrder.part)
         this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
         askOrderList.shift()
       } else if (bidSudtOrderAmount < askSudtOrderAmount) {
         console.info('bid order full match')
 
         // done order
-        const bidDoneCkbAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
+        const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
           bidPrice: bidPrice,
           bidSpendCapacityAmount: bidSpendCapacityAmount,
           bidSudtOrderAmount: bidSudtOrderAmount,
@@ -193,8 +191,8 @@ class OrdersService {
           bidSudtAmount: bidSudtAmount,
         })
 
-        this.pushInputCells(bidOrderStruct.id, bidOrderStruct.part)
-        this.pushOutputsCellAndData(bidDoneCkbAndSudt, bidOriginalScript)
+        this.pushInputCells(bidMatchOrder.id, undefined)
+        this.pushOutputsCellAndData(bidDoneCapacityAndSudt, bidOriginalScript)
         bidOrderList.shift()
 
         const askPartlyCapacityAndSudt: { capacity: string; data: string } = this.calPartlyAskCapacityAndSudt({
@@ -206,25 +204,26 @@ class OrdersService {
           askPrice: askPrice,
         })
         const newAskOutput: OrderDto = this.generateNewOutput(
-          askOrderStruct,
+          askMatchOrder,
           askPartlyCapacityAndSudt,
           askOriginalScript,
         )
 
         askOrderList.shift()
         askOrderList.unshift(newAskOutput)
+        askMatchOrder = askOrderList[0]
       } else {
         console.info('ask order full match')
 
-        const askDoneCkbAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
+        const askDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
           askPrice: askPrice,
           askSpendSudtAmount: askSpendSudtAmount,
           askSudtAmount: askSudtAmount,
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askCapacityOrderAmount: askCapacityOrderAmount,
         })
-        this.pushInputCells(askOrderStruct.id, askOrderStruct.part)
-        this.pushOutputsCellAndData(askDoneCkbAndSudt, askOriginalScript)
+        this.pushInputCells(askMatchOrder.id, undefined)
+        this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
         askOrderList.shift()
 
         //part dealed order
@@ -237,13 +236,14 @@ class OrdersService {
           bidPrice: bidPrice,
         })
         const newBidOutput: OrderDto = this.generateNewOutput(
-          bidOrderStruct,
+          bidMatchOrder,
           bidPartlyCapacityAndSudt,
           bidOriginalScript,
         )
 
         bidOrderList.shift()
         bidOrderList.unshift(newBidOutput)
+        bidMatchOrder = bidOrderList[0]
       }
 
       if (bidOrderList.length == 0 && askOrderList.length == 0) {
@@ -251,12 +251,12 @@ class OrdersService {
         return this.outputsCells
       }
 
-      if (askOrderList.length == 0 && bidOrderStruct.part) {
-        return this.stopMatchAndReturnOutputs(bidOrderStruct)
+      if (askOrderList.length == 0 && bidOrderList[0].part) {
+        return this.stopMatchAndReturnOutputs(bidMatchOrder)
       }
 
-      if (bidOrderList.length == 0 && askOrderStruct.part) {
-        return this.stopMatchAndReturnOutputs(askOrderStruct)
+      if (bidOrderList.length == 0 && askOrderList[0].part) {
+        return this.stopMatchAndReturnOutputs(askMatchOrder)
       }
 
       if (bidOrderList.length == 0 || askOrderList.length == 0) {
@@ -363,9 +363,7 @@ class OrdersService {
 
     return {
       capacity: '0x' + afterMatchBidCapacity.toString(16),
-      data: `0x${bigIntToUint128Le(afterMatchBidSudtAmount)}${bigIntToUint128Le(BigInt('0'))}${toUint64Le(
-        args.bidPrice,
-      ).slice(2)}00`,
+      data: formatOrderData(afterMatchBidSudtAmount, BigInt('0'), args.bidPrice, '00'),
     }
   }
 
@@ -383,9 +381,7 @@ class OrdersService {
 
     return {
       capacity: '0x' + afterMatchAskCapacity.toString(16),
-      data: `0x${bigIntToUint128Le(afterMatchAskSudtAmount)}${bigIntToUint128Le(BigInt('0'))}${toUint64Le(
-        args.askPrice,
-      ).slice(2)}01`,
+      data: formatOrderData(afterMatchAskSudtAmount, BigInt('0'), args.askPrice, '01'),
     }
   }
 
@@ -446,9 +442,7 @@ class OrdersService {
 
     return {
       capacity: '0x' + afterPartMatchBidCapacity.toString(16),
-      data: `0x${bigIntToUint128Le(afterPartMatchBidSudtAmount)}${bigIntToUint128Le(
-        afterPartMatchBidSudtOrderAmount,
-      )}${toUint64Le(args.bidPrice).slice(2)}00`,
+      data: formatOrderData(afterPartMatchBidSudtAmount, afterPartMatchBidSudtOrderAmount, args.bidPrice, '00'),
     }
   }
 
@@ -461,17 +455,14 @@ class OrdersService {
     askPrice: bigint
   }) {
     const askMinerFeeSudtAmount: bigint = (args.bidSudtOrderAmount * this.fee) / this.feeRatio
-    const afterPartMatchAskOrderCkbAmount =
-      (args.askCapacityOrderAmount - args.bidSpendCapacityAmount) / this.shannonsRatio
+    const afterPartMatchCapacityOrderCkbAmount = args.askCapacityOrderAmount - args.bidSpendCapacityAmount
     const afterPartMatchAskSudtAmount = args.askSudtAmount - args.bidSudtOrderAmount - askMinerFeeSudtAmount
     const afterPartMatchAskCapacityAmount = args.askOriginalCapacityAmount + args.bidSpendCapacityAmount
     this.dealMakerSudtAmount += askMinerFeeSudtAmount
 
     return {
       capacity: '0x' + afterPartMatchAskCapacityAmount.toString(16),
-      data: `0x${bigIntToUint128Le(afterPartMatchAskSudtAmount)}${bigIntToUint128Le(
-        afterPartMatchAskOrderCkbAmount,
-      )}${toUint64Le(args.askPrice).slice(2)}01`,
+      data: formatOrderData(afterPartMatchAskSudtAmount, afterPartMatchCapacityOrderCkbAmount, args.askPrice, '01'),
     }
   }
 
