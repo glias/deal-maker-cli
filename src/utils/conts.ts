@@ -3,6 +3,7 @@ export const DEFAULT_FEE_PRICE = '1000'
 export const INDEXER_DB = 'indexer-data'
 export const PRIVATE_KEY_PATH = '/Users/zmcNotafraid/dex/private_key.txt'
 export const SUDT_TX_HASH = '0xe12877ebd2c3c364dc46c5c992bcfaf4fee33fa13eebdf82c591fc9825aab769'
+export const SECP256K1_CODE_HASH = '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b65a8637b17723bbda3cce8'
 export const WEB_UI_PORT = 3000
 
 export const ORDER_SCRIPTS: any = {
