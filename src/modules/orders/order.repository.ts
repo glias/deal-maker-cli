@@ -47,9 +47,7 @@ class OrderRepository extends Repository<Order> {
   }
 
   #toCell = (cell: ReturnType<typeof parseOrderCell>) =>
-    cell.orderAmount === BigInt(0) ||
-    (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
-    !['00', '01'].includes(cell.type)
+    this.isInvalidOrderCell(cell)
       ? null
       : this.create({
           ...cell,
@@ -57,6 +55,18 @@ class OrderRepository extends Repository<Order> {
           type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
           price: cell.price.toString(16).padStart(16, '0'),
         })
+
+  private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {
+    const smallestCapacity: bigint =
+      (cell.orderAmount * cell.price) / BigInt(10 ** 10) + BigInt(17400000000) + BigInt(6100000000) + BigInt(10000)
+
+    return (
+      cell.orderAmount === BigInt(0) ||
+      (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
+      !['00', '01'].includes(cell.type) ||
+      (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity)
+    )
+  }
 }
 
 export default OrderRepository
