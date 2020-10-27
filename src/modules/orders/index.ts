@@ -48,14 +48,14 @@ class OrdersService {
     const ckb = new CKB(DEFAULT_NODE_URL)
     const { privateKey, dealMakerLock } = this.calDealMakerPrivateKeyAndLock(ckb)
 
-    const askOrderList = await this.getAskOrders()
     const bidOrderList = await this.getBidOrders()
+    const askOrderList = await this.getAskOrders()
     if (askOrderList.length == 0 || bidOrderList.length == 0) {
       console.info('Order Length is zero')
       return
     }
 
-    const outputs = this.startMatchAndReturnOutputs(askOrderList, bidOrderList)
+    const outputs = this.startMatchAndReturnOutputs(bidOrderList, askOrderList)
     if (outputs.length == 0) {
       return
     }
@@ -68,7 +68,7 @@ class OrdersService {
     const biggestCell = liveCells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
     this.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
 
-    const rawTx = this.generateRawTx(dealMakerLock)
+    const rawTx = this.generateRawTx()
     this.sendTransactionAndSaveDeal(rawTx, dealMakerLock, privateKey)
   }
 
@@ -87,7 +87,7 @@ class OrdersService {
     }
   }
 
-  private startMatchAndReturnOutputs(askOrderList: Array<OrderDto>, bidOrderList: Array<OrderDto>): any {
+  private startMatchAndReturnOutputs(bidOrderList: Array<OrderDto>, askOrderList: Array<OrderDto>): any {
     // after match
     // 1. match all, length both 0
     // 2. ask order length 0, bidOrderList part push current cell
@@ -148,20 +148,19 @@ class OrdersService {
 
       const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
       const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
-      const bidSpendCapacityAmount: bigint = (dealPrice * bidSudtOrderAmount) / this.shannonsRatio
+      const bidActualSpendCapacityAmount: bigint = (dealPrice * bidSudtOrderAmount) / this.shannonsRatio
       const bidOriginalCapacityAmount: bigint = BigInt(bidOrderOutput.capacity)
 
       const askSudtAmount: bigint = parseOrderData(askOrderOutput.data).sudtAmount
       const askCapacityOrderAmount: bigint = parseOrderData(askOrderOutput.data).orderAmount
-      const askSpendSudtAmount: bigint = (askCapacityOrderAmount * this.shannonsRatio) / dealPrice
-      const askSudtOrderAmount: bigint = (askCapacityOrderAmount * this.shannonsRatio) / askCapacityPrice
+      const askActualSpendSudtAmount: bigint = (askCapacityOrderAmount * this.shannonsRatio) / dealPrice
       const askOriginalCapacityAmount: bigint = BigInt(askOrderOutput.capacity)
 
-      if (bidSudtOrderAmount == askSudtOrderAmount) {
+      if (bidSudtOrderAmount == askActualSpendSudtAmount) {
         console.info('full match')
         const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
           bidPrice: bidPrice,
-          bidSpendCapacityAmount: bidSpendCapacityAmount,
+          bidActualSpendCapacityAmount: bidActualSpendCapacityAmount,
           bidSudtOrderAmount: bidSudtOrderAmount,
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
           bidSudtAmount: bidSudtAmount,
@@ -172,7 +171,7 @@ class OrdersService {
 
         const askDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
           askPrice: askPrice,
-          askSpendSudtAmount: askSpendSudtAmount,
+          askActualSpendSudtAmount: askActualSpendSudtAmount,
           askCapacityOrderAmount: askCapacityOrderAmount,
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askSudtAmount: askSudtAmount,
@@ -180,13 +179,13 @@ class OrdersService {
         this.pushInputCells(askMatchOrder.id, askMatchOrder.part)
         this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
         askOrderList.shift()
-      } else if (bidSudtOrderAmount < askSudtOrderAmount) {
+      } else if (bidSudtOrderAmount < askActualSpendSudtAmount) {
         console.info('bid order full match')
 
         // done order
         const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
           bidPrice: bidPrice,
-          bidSpendCapacityAmount: bidSpendCapacityAmount,
+          bidActualSpendCapacityAmount: bidActualSpendCapacityAmount,
           bidSudtOrderAmount: bidSudtOrderAmount,
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
           bidSudtAmount: bidSudtAmount,
@@ -198,7 +197,7 @@ class OrdersService {
 
         const askPartlyCapacityAndSudt: { capacity: string; data: string } = this.calPartlyAskCapacityAndSudt({
           bidSudtOrderAmount: bidSudtOrderAmount,
-          bidSpendCapacityAmount: bidSpendCapacityAmount,
+          bidActualSpendCapacityAmount: bidActualSpendCapacityAmount,
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askCapacityOrderAmount: askCapacityOrderAmount,
           askSudtAmount: askSudtAmount,
@@ -218,7 +217,7 @@ class OrdersService {
 
         const askDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
           askPrice: askPrice,
-          askSpendSudtAmount: askSpendSudtAmount,
+          askActualSpendSudtAmount: askActualSpendSudtAmount,
           askSudtAmount: askSudtAmount,
           askOriginalCapacityAmount: askOriginalCapacityAmount,
           askCapacityOrderAmount: askCapacityOrderAmount,
@@ -232,7 +231,7 @@ class OrdersService {
           askCapacityOrderAmount: askCapacityOrderAmount,
           bidOriginalCapacityAmount: bidOriginalCapacityAmount,
           bidSudtOrderAmount: bidSudtOrderAmount,
-          askSpendSudtAmount: askSpendSudtAmount,
+          askActualSpendSudtAmount: askActualSpendSudtAmount,
           bidSudtAmount: bidSudtAmount,
           bidPrice: bidPrice,
         })
@@ -263,7 +262,7 @@ class OrdersService {
         return this.outputsCells
       }
 
-      return this.startMatchAndReturnOutputs(askOrderList, bidOrderList)
+      return this.startMatchAndReturnOutputs(bidOrderList, askOrderList)
     }
   }
 
@@ -349,14 +348,14 @@ class OrdersService {
 
   private calDoneBidCapacityAndSudt(args: {
     bidPrice: bigint
-    bidSpendCapacityAmount: bigint
+    bidActualSpendCapacityAmount: bigint
     bidOriginalCapacityAmount: bigint
     bidSudtAmount: bigint
     bidSudtOrderAmount: bigint
   }) {
-    const bidMinerFeeCapacityAmount: bigint = (args.bidSpendCapacityAmount * this.fee) / this.feeRatio
+    const bidMinerFeeCapacityAmount: bigint = (args.bidActualSpendCapacityAmount * this.fee) / this.feeRatio
     const afterMatchBidCapacity: bigint =
-      args.bidOriginalCapacityAmount - args.bidSpendCapacityAmount - bidMinerFeeCapacityAmount
+      args.bidOriginalCapacityAmount - args.bidActualSpendCapacityAmount - bidMinerFeeCapacityAmount
     const afterMatchBidSudtAmount: bigint = args.bidSudtAmount + args.bidSudtOrderAmount
     this.dealMakerCapacityAmount += bidMinerFeeCapacityAmount
 
@@ -368,13 +367,13 @@ class OrdersService {
 
   private calDoneAskCapacityAndSudt(args: {
     askPrice: bigint
-    askSpendSudtAmount: bigint
+    askActualSpendSudtAmount: bigint
     askSudtAmount: bigint
     askOriginalCapacityAmount: bigint
     askCapacityOrderAmount: bigint
   }) {
-    const askMinerFeeSudtAmount: bigint = (args.askSpendSudtAmount * this.fee) / this.feeRatio
-    const afterMatchAskSudtAmount: bigint = args.askSudtAmount - args.askSpendSudtAmount - askMinerFeeSudtAmount
+    const askMinerFeeSudtAmount: bigint = (args.askActualSpendSudtAmount * this.fee) / this.feeRatio
+    const afterMatchAskSudtAmount: bigint = args.askSudtAmount - args.askActualSpendSudtAmount - askMinerFeeSudtAmount
     const afterMatchAskCapacity = args.askOriginalCapacityAmount + args.askCapacityOrderAmount
     this.dealMakerSudtAmount += askMinerFeeSudtAmount
 
@@ -428,15 +427,15 @@ class OrdersService {
     askCapacityOrderAmount: bigint
     bidOriginalCapacityAmount: bigint
     bidSudtOrderAmount: bigint
-    askSpendSudtAmount: bigint
+    askActualSpendSudtAmount: bigint
     bidSudtAmount: bigint
     bidPrice: bigint
   }) {
     const bidMinerFeeCapacityAmount: bigint = (args.askCapacityOrderAmount * this.fee) / this.feeRatio
     const afterPartMatchBidCapacity =
       args.bidOriginalCapacityAmount - args.askCapacityOrderAmount - bidMinerFeeCapacityAmount
-    const afterPartMatchBidSudtOrderAmount = args.bidSudtOrderAmount - args.askSpendSudtAmount
-    const afterPartMatchBidSudtAmount = args.bidSudtAmount + args.askSpendSudtAmount
+    const afterPartMatchBidSudtOrderAmount = args.bidSudtOrderAmount - args.askActualSpendSudtAmount
+    const afterPartMatchBidSudtAmount = args.bidSudtAmount + args.askActualSpendSudtAmount
     this.dealMakerCapacityAmount += bidMinerFeeCapacityAmount
 
     return {
@@ -447,16 +446,16 @@ class OrdersService {
 
   private calPartlyAskCapacityAndSudt(args: {
     bidSudtOrderAmount: bigint
-    bidSpendCapacityAmount: bigint
+    bidActualSpendCapacityAmount: bigint
     askOriginalCapacityAmount: bigint
     askCapacityOrderAmount: bigint
     askSudtAmount: bigint
     askPrice: bigint
   }) {
     const askMinerFeeSudtAmount: bigint = (args.bidSudtOrderAmount * this.fee) / this.feeRatio
-    const afterPartMatchCapacityOrderCkbAmount = args.askCapacityOrderAmount - args.bidSpendCapacityAmount
+    const afterPartMatchCapacityOrderCkbAmount = args.askCapacityOrderAmount - args.bidActualSpendCapacityAmount
     const afterPartMatchAskSudtAmount = args.askSudtAmount - args.bidSudtOrderAmount - askMinerFeeSudtAmount
-    const afterPartMatchAskCapacityAmount = args.askOriginalCapacityAmount + args.bidSpendCapacityAmount
+    const afterPartMatchAskCapacityAmount = args.askOriginalCapacityAmount + args.bidActualSpendCapacityAmount
     this.dealMakerSudtAmount += askMinerFeeSudtAmount
 
     return {
@@ -498,7 +497,7 @@ class OrdersService {
     return BigInt(10000)
   }
 
-  private generateRawTx(lock: CKBComponents.Script) {
+  private generateRawTx() {
     const rawTransaction: CKBComponents.RawTransactionToSign = {
       version: '0x0',
       headerDeps: [],

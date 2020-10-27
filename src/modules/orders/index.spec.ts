@@ -149,70 +149,123 @@ describe('Test orders service', () => {
       status: '',
       dataHash: '',
     }
-    describe('Full match order', () => {
-      const baseFullyMatchBidOrder: OrderDto = {
-        id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
-        tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-        type: OrderType.Bid,
-        price: BigInt(100_000_000_000),
-        blockNumber: 55,
-        output: `{"capacity":"0x175a588b00","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
-          BigInt(0),
-          BigInt(10_000_000_000),
-          BigInt(100_000_000_000),
-          '00',
-        )}"}`,
-      }
-      const baseFullyMatchAskOrder: OrderDto = {
-        id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
-        tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-        type: OrderType.Bid,
-        price: BigInt(90_000_000_000),
-        blockNumber: 55,
-        output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
-          BigInt(10_030_000_000),
-          BigInt(90_000_000_000),
-          BigInt(90_000_000_000),
-          '00',
-        )}"}`,
-      }
+    const baseBidOrder: OrderDto = {
+      id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+      tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+      type: OrderType.Bid,
+      price: BigInt(90_000_000_000),
+      blockNumber: 55,
+      output: `{"capacity":"0x${(902.7 * 10 * 10 ** 7).toString(
+        16,
+      )}","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+        BigInt(0),
+        BigInt(10_000_000_000),
+        BigInt(90_000_000_000),
+        '00',
+      )}"}`,
+    }
+    const baseAskOrder: OrderDto = {
+      id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+      tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+      type: OrderType.Bid,
+      price: BigInt(90_000_000_000),
+      blockNumber: 55,
+      output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+        BigInt(10_030_000_000),
+        BigInt(90_000_000_000),
+        BigInt(90_000_000_000),
+        '01',
+      )}"}`,
+    }
+
+    describe('Full match, One ask order One bid order', () => {
       describe('same block number', () => {
-        it.only('return correct outputs', () => {
+        it('return correct capacity and sudt amount', () => {
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([baseFullyMatchAskOrder], [baseFullyMatchBidOrder])
+          ordersService.startMatchAndReturnOutputs([baseBidOrder], [baseAskOrder])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
           // @ts-ignore
-          rawTx = ordersService.generateRawTx(dealMakerLock)
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual((BigInt(95000000000) * BigInt(3)) / BigInt(1000) - minerFee)
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(5015000000))
+          rawTx = ordersService.generateRawTx()
+          expect(BigInt(rawTx.outputs[0].capacity)).toEqual((BigInt(90000000000) * BigInt(3)) / BigInt(1000) - minerFee)
+          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(0))
           expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(90000000000))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(
-            (BigInt(90000000000) * shannonsRatio * BigInt(3)) / BigInt(950000000) / BigInt(1000),
-          )
+          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(0.3 * 10 * 10 ** 7))
           expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(10_000_000_000))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(527_894_738))
+          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(0))
         })
       })
 
       describe('different block number', () => {
-        const askOrder2 = { ...baseFullyMatchAskOrder, blockNumber: 50 }
+        const askOrder_1_2 = { ...baseAskOrder, blockNumber: 50 }
 
         it('returns correct capacity and sudt amount', () => {
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([askOrder2], [baseFullyMatchBidOrder])
+          ordersService.startMatchAndReturnOutputs([baseBidOrder], [askOrder_1_2])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
           // @ts-ignore
-          rawTx = ordersService.generateRawTx(dealMakerLock)
+          rawTx = ordersService.generateRawTx()
           expect(BigInt(rawTx.outputs[0].capacity)).toEqual((BigInt(90000000000) * BigInt(3)) / BigInt(1000) - minerFee)
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(10030000000))
+          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(0))
           expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(90000000000))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(
-            (BigInt(90000000000) * shannonsRatio * BigInt(3)) / BigInt(900000000) / BigInt(1000),
-          )
+          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(0.3 * 10 * 10 ** 7))
           expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(10_000_000_000))
           expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(0))
+        })
+      })
+    })
+
+    describe('Part match, One ask order One bid order, left bid order', () => {
+      const bidOrder_2_1 = {
+        ...baseBidOrder,
+        price: BigInt(10 * 10 ** 10),
+        output: `{"capacity":"0x${(1203.6 * 10 * 10 ** 7).toString(
+          16,
+        )}","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+          BigInt(0),
+          BigInt(120 * 10 ** 8),
+          BigInt(100_000_000_000),
+          '00',
+        )}"}`,
+      }
+
+      describe('same block number', () => {
+        it('return correct capacity and sudt amount', () => {
+          // @ts-ignore
+          ordersService.startMatchAndReturnOutputs([bidOrder_2_1], [baseAskOrder])
+          // @ts-ignore
+          ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
+          // @ts-ignore
+          rawTx = ordersService.generateRawTx()
+          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(2.7 * 10 * 10 ** 7) - minerFee)
+          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(90000000000))
+          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(300.9 * 10 * 10 ** 7))
+          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(28421052)),
+            expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(527894738))
+          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(9473684210))
+          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(2526315790))
+        })
+      })
+
+      describe('different block number', () => {
+        const askOrder_2_2 = { ...baseAskOrder, blockNumber: 50 }
+        it('returns correct capacity and sudt amount', () => {
+          // @ts-ignore
+          ordersService.startMatchAndReturnOutputs([bidOrder_2_1], [askOrder_2_2])
+          // @ts-ignore
+          ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
+          // @ts-ignore
+          rawTx = ordersService.generateRawTx()
+          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(2.7 * 10 * 10 ** 7) - minerFee)
+          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(900 * 10 ** 8))
+          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(300.9 * 10 * 10 ** 7))
+          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(0.3 * 10 * 10 ** 7))
+          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(0))
+          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(100 * 10 ** 8))
+          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(20 * 10 ** 8))
         })
       })
     })
