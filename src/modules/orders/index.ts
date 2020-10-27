@@ -14,6 +14,8 @@ import {
   DEFAULT_NODE_URL,
   formatOrderData,
   SECP256K1_CODE_HASH,
+  SECP256K1_TX_HASH,
+  ORDERBOOK_TX_HASH,
 } from '../../utils'
 import { Deal, DealStatus } from './deal.entity'
 import fs from 'fs'
@@ -525,11 +527,11 @@ class OrdersService {
           depType: 'code',
         },
         {
-          outPoint: { txHash: '0x751f0d4591e6a2c7bd54bc7a9cf6e9e87d31bd8cf2af9f7dda38c9d8d8cc29ee', index: '0x0' },
-          depType: 'depGroup',
+          outPoint: { txHash: ORDERBOOK_TX_HASH, index: '0x0' },
+          depType: 'code',
         },
         {
-          outPoint: { txHash: '0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37', index: '0x0' },
+          outPoint: { txHash: SECP256K1_TX_HASH, index: '0x0' },
           depType: 'depGroup',
         },
       ],
