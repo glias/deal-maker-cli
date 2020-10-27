@@ -9,7 +9,7 @@ const readBigUInt64LE = (rawHexString: string) => {
  *
  * @param rawHexString hex string without 0x prefix
  */
-const readBigUInt128LE = (rawHexString: string) => {
+export const readBigUInt128LE = (rawHexString: string) => {
   const buf = Buffer.from(rawHexString, 'hex')
   return buf.reverse().toString('hex')
 }
