@@ -11,7 +11,6 @@ import {
   bigIntToUint128Le,
   SUDT_TX_HASH,
   signAndSendTransaction,
-  PRIVATE_KEY_PATH,
   DEFAULT_NODE_URL,
   formatOrderData,
   SECP256K1_CODE_HASH,
@@ -20,6 +19,7 @@ import { Deal, DealStatus } from './deal.entity'
 import fs from 'fs'
 import CKB from '@nervosnetwork/ckb-sdk-core'
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
+import ConfigService from '../config'
 
 interface CachedCell extends CKBComponents.CellIncludingOutPoint {
   status: string
@@ -46,7 +46,11 @@ class OrdersService {
 
   public async prepareMatch(indexer: Indexer) {
     const ckb = new CKB(DEFAULT_NODE_URL)
-    const { privateKey, dealMakerLock } = this.calDealMakerPrivateKeyAndLock(ckb)
+    const { privateKey, dealMakerLock } = await this.calDealMakerPrivateKeyAndLock(ckb)
+    if (privateKey === null || dealMakerLock === undefined) {
+      console.info('no private key path set')
+      return
+    }
 
     const bidOrderList = await this.getBidOrders()
     const askOrderList = await this.getAskOrders()
@@ -72,8 +76,19 @@ class OrdersService {
     this.sendTransactionAndSaveDeal(rawTx, dealMakerLock, privateKey)
   }
 
-  private calDealMakerPrivateKeyAndLock(ckb: CKB) {
-    const privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf-8').trim()
+  private async calDealMakerPrivateKeyAndLock(
+    ckb: CKB,
+  ): Promise<{ privateKey: null | string; dealMakerLock: undefined | CKBComponents.Script }> {
+    const configService = new ConfigService()
+    const config = await configService.getConfig()
+    if (config.keyFile === null) {
+      return {
+        privateKey: null,
+        dealMakerLock: undefined,
+      }
+    }
+
+    const privateKey = fs.readFileSync(config.keyFile, 'utf-8').trim()
     const publicKey = ckb.utils.privateKeyToPublicKey(privateKey)
     const hexPublicKey = `0x${ckb.utils.blake160(publicKey, 'hex')}`
     const dealMakerLock: CKBComponents.Script = {
@@ -550,6 +565,8 @@ class OrdersService {
       console.info('==============================')
       console.info(response)
     } catch (error) {
+      console.info('==============================')
+      console.info(error)
       deal.status = DealStatus.Failed
     }
 
