@@ -64,7 +64,7 @@ class TasksService {
     )
 
     const now = Date.now()
-    const TIMEOUT = 10 * 3600 // ms
+    const TIMEOUT = 60 * 10 * 1000 // 10 minutes
 
     for (let i = 0; i < pendingDeals.length; i++) {
       const deal = pendingDeals[i]

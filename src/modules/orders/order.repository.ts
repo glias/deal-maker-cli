@@ -57,8 +57,7 @@ class OrderRepository extends Repository<Order> {
         })
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {
-    const smallestCapacity: bigint =
-      (cell.orderAmount * cell.price) / BigInt(10 ** 10) + BigInt(17400000000) + BigInt(6100000000) + BigInt(10000)
+    const smallestCapacity: bigint = (cell.orderAmount * cell.price) / BigInt(10 ** 10) + BigInt(17900000000)
 
     return (
       cell.orderAmount === BigInt(0) ||
