@@ -5,7 +5,7 @@ export const bidCell: Cell = {
     lock: {
       code_hash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
       hash_type: 'data',
-      args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
+      args: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
     },
     type: {
       code_hash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
@@ -29,7 +29,7 @@ export const askCell: Cell = {
     lock: {
       code_hash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
       hash_type: 'data',
-      args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
+      args: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
     },
     type: {
       code_hash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',

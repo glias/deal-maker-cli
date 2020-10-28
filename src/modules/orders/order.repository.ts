@@ -64,7 +64,8 @@ class OrderRepository extends Repository<Order> {
       cell.orderAmount === BigInt(0) ||
       (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
       !['00', '01'].includes(cell.type) ||
-      (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity)
+      (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) ||
+      !(cell.output.lock.args.length === 66)
     )
   }
 }
