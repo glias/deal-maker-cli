@@ -8,7 +8,7 @@ export const checkPendingDeals = async (rpcUrl: string, txHashes: string[]) => {
   return rpc
     .createBatchRequest(requests)
     .exec()
-    .then(resList => resList.map(res => res.txStatus === 'committed'))
+    .then(resList => resList.map(res => res.txStatus.status === 'committed'))
     .catch(() => {
       return new Array<boolean>(requests.length).fill(false)
     })
