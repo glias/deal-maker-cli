@@ -184,8 +184,8 @@
         socket.emit('set-config', 'keyFile', value)
       })
 
-      const updateOrderTable = (_table, _orders) => {
-        const rows = _orders
+      const updateOrderTable = (_table, _orders, _reverse) => {
+        let rows = _orders
           .map(
             (_order, _idx) =>
               `<tr>
@@ -197,8 +197,10 @@
             <td title=${_order.outPoint}>${_order.outPoint}</td>
             </tr>`,
           )
-          .join('')
-        _table.innerHTML = rows
+        if (_reverse) {
+          rows = rows.reverse()
+        }
+        _table.innerHTML = rows.join('')
       }
 
       const updateDealTable = (_table, _deals) => {
@@ -246,8 +248,8 @@
       }
 
       socket.on('stat', stat => {
-        updateOrderTable(askOrderTable, stat.askOrders)
-        updateOrderTable(bidOrderTable, stat.bidOrders)
+        updateOrderTable(askOrderTable, stat.askOrders, true)
+        updateOrderTable(bidOrderTable, stat.bidOrders, false)
         updateDealTable(dealTable, stat.deals)
         updateConfigTable(configTable, stat.config)
         updateSyncStateTable(syncStateTable, stat.syncState)
