@@ -20,6 +20,7 @@ import {
 import { Deal, DealStatus } from './deal.entity'
 import fs from 'fs'
 import CKB from '@nervosnetwork/ckb-sdk-core'
+import { getTransactionSize } from '@nervosnetwork/ckb-sdk-utils/lib/sizes'
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import ConfigService from '../config'
 
@@ -75,7 +76,8 @@ class OrdersService {
     this.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
 
     const rawTx = this.generateRawTx()
-    this.sendTransactionAndSaveDeal(rawTx, dealMakerLock, privateKey)
+    const subMinerFeeTx = this.subMinerFee(rawTx)
+    this.sendTransactionAndSaveDeal(subMinerFeeTx, dealMakerLock, privateKey)
   }
 
   private async calDealMakerPrivateKeyAndLock(
@@ -115,8 +117,8 @@ class OrdersService {
 
     let askMatchOrder = askOrderList[0]
     let bidMatchOrder = bidOrderList[0]
-    const { price: askPrice, blockNumber: askOrderBlockNum } = askMatchOrder
-    const { price: bidPrice, blockNumber: bidOrderBlockNum } = bidMatchOrder
+    const { price: askPrice } = askMatchOrder
+    const { price: bidPrice } = bidMatchOrder
 
     const askCapacityPrice = (askPrice * this.shannonsRatio) / this.priceRatio
     const bidCapacityPrice = (bidPrice * this.shannonsRatio) / this.priceRatio
@@ -156,12 +158,7 @@ class OrdersService {
         return []
       }
     } else {
-      const dealPrice: bigint = this.calDealPrice(
-        askOrderBlockNum,
-        bidOrderBlockNum,
-        askCapacityPrice,
-        bidCapacityPrice,
-      )
+      const dealPrice: bigint = (askCapacityPrice + bidCapacityPrice) / BigInt('2')
 
       const bidSudtAmount: bigint = parseOrderData(bidOrderOutput.data).sudtAmount
       const bidSudtOrderAmount: bigint = parseOrderData(bidOrderOutput.data).orderAmount
@@ -336,19 +333,6 @@ class OrdersService {
     return this.#dealRepository.getPendingDeals()
   }
 
-  private calDealPrice(
-    askOrderBlockNum: number,
-    bidOrderBlockNum: number,
-    askCapacityPrice: bigint,
-    bidCapacityPrice: bigint,
-  ): bigint {
-    if (askOrderBlockNum == bidOrderBlockNum) {
-      return (askCapacityPrice + bidCapacityPrice) / BigInt('2')
-    } else {
-      return askOrderBlockNum > bidOrderBlockNum ? bidCapacityPrice : askCapacityPrice
-    }
-  }
-
   private pushInputCells(inputId: string, part: undefined | boolean) {
     if (part === undefined) {
       const previousInput: CKBComponents.CellInput = {
@@ -502,7 +486,7 @@ class OrdersService {
     })
 
     const dealMakerCell: CKBComponents.CellOutput = {
-      capacity: '0x' + (this.dealMakerCapacityAmount + BigInt(biggestCell.capacity) - this.calMinerFee()).toString(16),
+      capacity: '0x' + (this.dealMakerCapacityAmount + BigInt(biggestCell.capacity)).toString(16),
       lock: dealMakerLock,
       type: this.outputsCells[0].type,
     }
@@ -510,8 +494,14 @@ class OrdersService {
     this.outputsData.unshift(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
   }
 
-  private calMinerFee(): bigint {
-    return BigInt(10000)
+  private subMinerFee(rawTx: CKBComponents.RawTransactionToSign): CKBComponents.RawTransactionToSign {
+    const minerFee: bigint = BigInt(getTransactionSize(this.generateRawTx())) * BigInt(1000)
+    const dealMakerOutput: CKBComponents.Cell = rawTx.outputs[0]
+    const dealMakerCapacity = '0x' + (BigInt(rawTx.outputs[0].capacity) - minerFee).toString(16)
+    const newDealMakerOutput: CKBComponents.Cell = { ...dealMakerOutput, ...{ capacity: dealMakerCapacity } }
+    this.outputsCells.shift()
+    this.outputsCells.unshift(newDealMakerOutput)
+    return { ...rawTx, ...{ outputs: this.outputsCells } }
   }
 
   private generateRawTx() {
