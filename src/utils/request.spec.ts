@@ -18,7 +18,11 @@ describe('Test request', () => {
 
     describe('when request is resolved', () => {
       beforeAll(() => {
-        mockExec.mockResolvedValue([{ txStatus: 'committed' }, { txStatus: 'pending' }, { txStatus: 'committed' }])
+        mockExec.mockResolvedValue([
+          { txStatus: { status: 'committed' } },
+          { txStatus: { status: 'pending' } },
+          { txStatus: { status: 'committed' } },
+        ])
       })
       it('should return check results', async () => {
         const res = await checkPendingDeals(MOCK_URL, MOCK_TX_HASHES)
