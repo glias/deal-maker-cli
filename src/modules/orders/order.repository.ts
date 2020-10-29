@@ -58,14 +58,16 @@ class OrderRepository extends Repository<Order> {
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {
     const smallestCapacity: bigint = (cell.orderAmount * cell.price) / BigInt(10 ** 10) + BigInt(17900000000)
+    const biggestCapacityOrderAmount: bigint = (cell.sudtAmount * cell.price) / BigInt(10 ** 10)
 
     return (
       cell.orderAmount === BigInt(0) ||
       (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
       !['00', '01'].includes(cell.type) ||
       (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) ||
+      (cell.type == '01' && cell.orderAmount > biggestCapacityOrderAmount) ||
       !(cell.output.lock.args.length === 66) ||
-      cell.output.type?.args == SUDT_TYPE_ARGS
+      cell.output.type?.args != SUDT_TYPE_ARGS
     )
   }
 }
