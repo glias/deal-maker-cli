@@ -56,15 +56,17 @@ describe('Test orders service', () => {
       let askOrders = await ordersService.getAskOrders()
       expect(askOrders).toHaveLength(0)
       await ordersService.saveOrder(askCell)
-      askOrders = await ordersService.getAskOrders()
+      askOrders = await ordersService.getAskOrders('0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902')
       expect(askOrders).toHaveLength(1)
     })
 
     it('should get bid orders', async () => {
-      let bidOrders = await ordersService.getBidOrders()
+      let bidOrders = await ordersService.getBidOrders(
+        '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
+      )
       expect(bidOrders).toHaveLength(0)
       await ordersService.saveOrder(bidCell)
-      bidOrders = await ordersService.getBidOrders()
+      bidOrders = await ordersService.getBidOrders('0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902')
       expect(bidOrders).toHaveLength(1)
     })
 
@@ -115,11 +117,11 @@ describe('Test orders service', () => {
     })
 
     it('should deals', async () => {
-      let deals = await ordersService.getDeals(0)
+      let deals = await ordersService.getDeals(0, '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902')
       expect(deals).toHaveLength(0)
       await ordersService.saveDeal(pendingDeal)
       await ordersService.saveDeal(doneDeal)
-      deals = await ordersService.getDeals(0)
+      deals = await ordersService.getDeals(0, '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902')
       expect(deals).toHaveLength(2)
     })
     it('should get pending deals', async () => {

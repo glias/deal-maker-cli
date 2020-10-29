@@ -68,8 +68,18 @@ describe('Test order repository', () => {
       ]) {
         await orderRepository.saveOrder(order)
       }
-      const askOrders = await orderRepository.getOrders(0, OrderType.Ask)
-      const bidOrders = await orderRepository.getOrders(0, OrderType.Bid)
+      const askOrders = await orderRepository.getOrders(
+        0,
+        OrderType.Ask,
+        [],
+        '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
+      )
+      const bidOrders = await orderRepository.getOrders(
+        0,
+        OrderType.Bid,
+        [],
+        '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
+      )
       expect(askOrders).toHaveLength(2)
       expect(bidOrders).toHaveLength(2)
       expect(BigInt(askOrders[0].price)).toBeLessThan(BigInt(askOrders[1].price))
@@ -80,7 +90,12 @@ describe('Test order repository', () => {
       await orderRepository.saveOrder(askOrderWithHigherPrice)
       await orderRepository.saveOrder(askOrderWithLowerPrice)
 
-      const askOrders = await orderRepository.getOrders(0, OrderType.Ask, [askOrderWithHigherPrice.id])
+      const askOrders = await orderRepository.getOrders(
+        0,
+        OrderType.Ask,
+        [askOrderWithHigherPrice.id],
+        '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
+      )
       expect(askOrders).toHaveLength(1)
       expect(askOrders[0].id).toBe(askOrderWithLowerPrice.id)
     })

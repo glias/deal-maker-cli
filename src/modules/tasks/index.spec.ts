@@ -17,6 +17,7 @@ jest.setMock('../../utils/', {
   scanOrderCells: mockScanOrderCells,
   subscribeOrderCell: mockSubscribeOrderCell,
   checkPendingDeals: mockCheckPendingDeals,
+  SUDT_TYPE_ARGS_LIST: ['0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902'],
 })
 
 import 'reflect-metadata'
