@@ -76,6 +76,7 @@ class OrdersService {
     this.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
 
     const rawTx = this.generateRawTx()
+    console.info(JSON.stringify(rawTx, null, 2))
     const subMinerFeeTx = this.subMinerFee(rawTx)
     this.sendTransactionAndSaveDeal(subMinerFeeTx, dealMakerLock, privateKey)
   }
@@ -136,7 +137,7 @@ class OrdersService {
 
     if (askPrice > bidPrice) {
       if (this.outputsCells.length > 0) {
-        if (askMatchOrder.part) {
+        if (bidMatchOrder.part) {
           this.pushInputCells(bidMatchOrder.id, undefined)
           this.pushOutputsCellAndData(
             { capacity: bidOrderOutput.capacity, data: bidOrderOutput.data },
@@ -144,11 +145,11 @@ class OrdersService {
           )
         }
 
-        if (bidMatchOrder.part) {
+        if (askMatchOrder.part) {
           this.pushInputCells(askMatchOrder.id, undefined)
           this.pushOutputsCellAndData(
             { capacity: askOrderOutput.capacity, data: askOrderOutput.data },
-            bidOriginalScript,
+            askOriginalScript,
           )
         }
 
