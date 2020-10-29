@@ -455,14 +455,14 @@ class OrdersService {
     askPrice: bigint
   }) {
     const askMinerFeeSudtAmount: bigint = (args.bidSudtOrderAmount * this.fee) / this.feeRatio
-    const afterPartMatchCapacityOrderCkbAmount = args.askCapacityOrderAmount - args.bidActualSpendCapacityAmount
+    const afterPartMatchCapacityOrderAmount = args.askCapacityOrderAmount - args.bidActualSpendCapacityAmount
     const afterPartMatchAskSudtAmount = args.askSudtAmount - args.bidSudtOrderAmount - askMinerFeeSudtAmount
     const afterPartMatchAskCapacityAmount = args.askOriginalCapacityAmount + args.bidActualSpendCapacityAmount
     this.dealMakerSudtAmount += askMinerFeeSudtAmount
 
     return {
       capacity: '0x' + afterPartMatchAskCapacityAmount.toString(16),
-      data: formatOrderData(afterPartMatchAskSudtAmount, afterPartMatchCapacityOrderCkbAmount, args.askPrice, '01'),
+      data: formatOrderData(afterPartMatchAskSudtAmount, afterPartMatchCapacityOrderAmount, args.askPrice, '01'),
     }
   }
 

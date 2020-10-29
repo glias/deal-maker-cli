@@ -1,12 +1,12 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository, Not, In } from 'typeorm'
-import { parseOrderCell } from '../../utils'
+import { parseOrderCell, SUDT_TYPE_ARGS } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
 @injectable()
 @EntityRepository(Order)
 class OrderRepository extends Repository<Order> {
-  #pageSize = 100
+  #pageSize = 50
   async saveOrder(cell: ReturnType<typeof parseOrderCell>) {
     const c = this.#toCell(cell)
     if (c) {
@@ -64,7 +64,8 @@ class OrderRepository extends Repository<Order> {
       (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
       !['00', '01'].includes(cell.type) ||
       (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) ||
-      !(cell.output.lock.args.length === 66)
+      !(cell.output.lock.args.length === 66) ||
+      cell.output.type?.args == SUDT_TYPE_ARGS
     )
   }
 }
