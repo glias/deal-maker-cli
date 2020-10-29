@@ -54,7 +54,7 @@ class OrdersService {
   Such as set private key; check order list is not empty; check deal maker have live cells etc.
   Other sync order filter conditions are define in orders/order.repository.ts toCell function.
   */
-  public async prepareMatch(indexer: Indexer) {
+  public async prepareMatch(indexer: Indexer, sudt_type_args: string) {
     const ckb = new CKB(DEFAULT_NODE_URL)
     const { privateKey, dealMakerLock } = await this.calDealMakerPrivateKeyAndLock(ckb)
     if (privateKey === null || dealMakerLock === undefined) {
@@ -62,8 +62,8 @@ class OrdersService {
       return
     }
 
-    const bidOrderList = await this.getBidOrders()
-    const askOrderList = await this.getAskOrders()
+    const bidOrderList = await this.getBidOrders(sudt_type_args)
+    const askOrderList = await this.getAskOrders(sudt_type_args)
     if (askOrderList.length == 0 || bidOrderList.length == 0) {
       console.error('Order Length is zero')
       return
@@ -79,13 +79,21 @@ class OrdersService {
       console.error('No live cells')
       return
     }
-    const biggestCell = liveCells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
+    function isSameSudt(cell: CachedCell) {
+      return cell.type?.args == sudt_type_args || cell.type?.args === undefined
+    }
+    const sudtCells = liveCells.filter(isSameSudt)
+    const biggestCell = sudtCells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
+    if (biggestCell == undefined) {
+      console.error(`No normal cells or ${sudt_type_args} live cells`)
+      return
+    }
     this.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
 
     const rawTx = this.generateRawTx()
     const minerFee = this.calculateMinerFee(rawTx)
     const subMinerFeeTx = this.subMinerFeeAndUpdateOutputs(rawTx, minerFee)
-    const dealRecord = this.generateDealStruct(minerFee)
+    const dealRecord = this.generateDealStruct(minerFee, sudt_type_args)
     this.sendTransactionAndSaveDeal(subMinerFeeTx, dealMakerLock, privateKey, dealRecord)
     this.clearGlobalVariables()
   }
@@ -102,17 +110,17 @@ class OrdersService {
   /**
    * @param pageNo start from 0
    */
-  public getAskOrders = async (pageNo = 0): Promise<OrderDto[]> => {
-    const pendingOrderIds = await this.#dealRepository.getPendingOrderIds()
-    return this.#orderRepository.getOrders(pageNo, OrderType.Ask, pendingOrderIds)
+  public getAskOrders = async (args: string, pageNo = 0): Promise<OrderDto[]> => {
+    const pendingOrderIds = await this.#dealRepository.getPendingOrderIds(args)
+    return this.#orderRepository.getOrders(pageNo, OrderType.Ask, pendingOrderIds, args)
   }
 
   /**
    * @param pageNo start from 0
    */
-  public getBidOrders = async (pageNo = 0): Promise<OrderDto[]> => {
-    const pendingOrderIds = await this.#dealRepository.getPendingOrderIds()
-    return this.#orderRepository.getOrders(pageNo, OrderType.Bid, pendingOrderIds)
+  public getBidOrders = async (args: string, pageNo = 0): Promise<OrderDto[]> => {
+    const pendingOrderIds = await this.#dealRepository.getPendingOrderIds(args)
+    return this.#orderRepository.getOrders(pageNo, OrderType.Bid, pendingOrderIds, args)
   }
 
   public flushOrders = (cells: Array<Cell>) => {
@@ -135,8 +143,8 @@ class OrdersService {
     return this.#dealRepository.removeDeal(txHash)
   }
 
-  public getDeals = (pageNo: number) => {
-    return this.#dealRepository.getDeals(pageNo)
+  public getDeals = (pageNo: number, args: string) => {
+    return this.#dealRepository.getDeals(pageNo, args)
   }
 
   public getPendingDeals = () => {
@@ -565,13 +573,14 @@ class OrdersService {
     return rawTransaction
   }
 
-  private generateDealStruct(minerFee: bigint) {
+  private generateDealStruct(minerFee: bigint, arg: string) {
     const orderIds: string = this.inputCells
       .map((input: CKBComponents.CellInput) => `${input.previousOutput!.txHash}-${input.previousOutput!.index}`)
       .join()
     const fee: string = `${this.dealMakerCapacityAmount - minerFee}-${this.dealMakerSudtAmount}`
     return {
       txHash: '',
+      tokenId: arg,
       orderIds: orderIds,
       fee: fee,
       status: DealStatus.Pending,
@@ -582,7 +591,7 @@ class OrdersService {
     rawTransaction: CKBComponents.RawTransactionToSign,
     lock: CKBComponents.Script,
     privateKey: string,
-    deal: { txHash: string; status: number; orderIds: string; fee: string },
+    deal: { txHash: string; status: number; orderIds: string; fee: string; tokenId: string },
   ) {
     try {
       const response = await signAndSendTransaction(rawTransaction, privateKey, lock)

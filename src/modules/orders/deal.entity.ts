@@ -12,6 +12,9 @@ export class Deal {
   @PrimaryColumn('varchar', { name: 'tx_hash' })
   txHash!: string
 
+  @Column('varchar', { name: 'token_id' })
+  tokenId!: string
+
   @Column('varchar', { name: 'order_ids' })
   orderIds!: string
 

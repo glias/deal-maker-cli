@@ -3,7 +3,7 @@ import fs from 'fs'
 import { CronJob } from 'cron'
 import boostrap from './bootstrap'
 import { container, modules } from './container'
-import { logger, parseOrderData } from './utils'
+import { logger, parseOrderData, UI_SUDT_TYPE_ARGS } from './utils'
 import ConfigService from './modules/config'
 import TasksService from './modules/tasks'
 import OrdersService from './modules/orders'
@@ -50,14 +50,14 @@ export default class DealMaker {
     this.tasksService.start()
     // start web ui
     this.#webUi = bootstrapWebUi({
-      onConnect: this.syncWebUi,
+      onConnect: () => this.syncWebUi(UI_SUDT_TYPE_ARGS),
       onSetConfig: (...args: Parameters<DealMaker['setConfig']>) => {
         this.setConfig(...args)
-          .then(this.syncWebUi)
+          .then(() => this.syncWebUi(UI_SUDT_TYPE_ARGS))
           .then(() => process.exit(0))
       },
     })
-    new CronJob('*/3 * * * * *', this.syncWebUi, null, true)
+    new CronJob('*/3 * * * * *', () => this.syncWebUi(UI_SUDT_TYPE_ARGS), null, true)
   }
 
   public getConfig = async () => {
@@ -89,9 +89,12 @@ export default class DealMaker {
     }
   }
 
-  public getOrders = async () => {
+  public getOrders = async (sudt_type_args: string) => {
     await this.#bootstrap()
-    const [asks, bids] = await Promise.all([this.orderService.getAskOrders(), this.orderService.getBidOrders()])
+    const [asks, bids] = await Promise.all([
+      this.orderService.getAskOrders(sudt_type_args),
+      this.orderService.getBidOrders(sudt_type_args),
+    ])
     return {
       asks,
       bids,
@@ -110,7 +113,7 @@ export default class DealMaker {
     }
   }
 
-  public syncWebUi = async () => {
+  public syncWebUi = async (sudt_type_args: string) => {
     if (!this.#webUi) return
 
     const orderParser = (order: OrderDto) => {
@@ -143,9 +146,9 @@ export default class DealMaker {
       }
     }
     const [askOrders, bidOrders, deals, config, syncState] = await Promise.all([
-      this.orderService.getAskOrders().then(orders => orders.map(orderParser)),
-      this.orderService.getBidOrders().then(orders => orders.map(orderParser)),
-      this.orderService.getDeals(0).then(deals => deals.map(dealParser)),
+      this.orderService.getAskOrders(sudt_type_args).then(orders => orders.map(orderParser)),
+      this.orderService.getBidOrders(sudt_type_args).then(orders => orders.map(orderParser)),
+      this.orderService.getDeals(0, sudt_type_args).then(deals => deals.map(dealParser)),
       this.configService.getConfig(),
       this.tasksService.getSyncState(),
     ])

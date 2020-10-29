@@ -1,6 +1,6 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository, Not, In } from 'typeorm'
-import { parseOrderCell, SUDT_TYPE_ARGS } from '../../utils'
+import { parseOrderCell, SUDT_TYPE_ARGS_LIST } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
 @injectable()
@@ -19,7 +19,7 @@ class OrderRepository extends Repository<Order> {
     return this.delete(id)
   }
 
-  async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = []) {
+  async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = [], sudt_type_args: string) {
     return this.find({
       skip: pageNo * this.#pageSize,
       take: this.#pageSize,
@@ -30,6 +30,7 @@ class OrderRepository extends Repository<Order> {
       where: {
         type: type,
         id: Not(In(pendingOrderIds)),
+        tokenId: sudt_type_args,
       },
     }).then(orders => orders.map(o => ({ ...o, price: BigInt(`0x${o.price}`) })))
   }
@@ -67,7 +68,8 @@ class OrderRepository extends Repository<Order> {
       (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) ||
       (cell.type == '01' && cell.orderAmount > biggestCapacityOrderAmount) ||
       !(cell.output.lock.args.length === 66) ||
-      cell.output.type?.args != SUDT_TYPE_ARGS
+      cell.output.type?.args == undefined ||
+      !SUDT_TYPE_ARGS_LIST.includes(cell.output.type?.args)
     )
   }
 }
