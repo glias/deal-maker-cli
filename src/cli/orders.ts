@@ -11,9 +11,9 @@ const header = () => {
   return `\n${line}\n${headers}\n${line}`
 }
 
-const getOrders = async (sudt_type_args: string) => {
+const getOrders = async (sudtTypeArgs: string) => {
   const dealMaker = new DealMaker()
-  const orders = await dealMaker.getOrders(sudt_type_args)
+  const orders = await dealMaker.getOrders(sudtTypeArgs)
   let body = '\n'
   const count = Math.max(orders.asks.length, orders.bids.length)
   for (let i = 0; i < count; i++) {
@@ -22,8 +22,8 @@ const getOrders = async (sudt_type_args: string) => {
   return header() + body
 }
 
-const printOrders = async (sudt_type_args: string) => {
-  const orders = await getOrders(sudt_type_args)
+const printOrders = async (sudtTypeArgs: string) => {
+  const orders = await getOrders(sudtTypeArgs)
   logger.info(orders)
 }
 export default {

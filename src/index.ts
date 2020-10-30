@@ -89,11 +89,11 @@ export default class DealMaker {
     }
   }
 
-  public getOrders = async (sudt_type_args: string) => {
+  public getOrders = async (sudtTypeArgs: string) => {
     await this.#bootstrap()
     const [asks, bids] = await Promise.all([
-      this.orderService.getAskOrders(sudt_type_args),
-      this.orderService.getBidOrders(sudt_type_args),
+      this.orderService.getAskOrders(sudtTypeArgs),
+      this.orderService.getBidOrders(sudtTypeArgs),
     ])
     return {
       asks,
@@ -113,7 +113,7 @@ export default class DealMaker {
     }
   }
 
-  public syncWebUi = async (sudt_type_args: string) => {
+  public syncWebUi = async (sudtTypeArgs: string) => {
     if (!this.#webUi) return
 
     const orderParser = (order: OrderDto) => {
@@ -146,9 +146,9 @@ export default class DealMaker {
       }
     }
     const [askOrders, bidOrders, deals, config, syncState] = await Promise.all([
-      this.orderService.getAskOrders(sudt_type_args).then(orders => orders.map(orderParser)),
-      this.orderService.getBidOrders(sudt_type_args).then(orders => orders.map(orderParser)),
-      this.orderService.getDeals(0, sudt_type_args).then(deals => deals.map(dealParser)),
+      this.orderService.getAskOrders(sudtTypeArgs).then(orders => orders.map(orderParser)),
+      this.orderService.getBidOrders(sudtTypeArgs).then(orders => orders.map(orderParser)),
+      this.orderService.getDeals(0, sudtTypeArgs).then(deals => deals.map(dealParser)),
       this.configService.getConfig(),
       this.tasksService.getSyncState(),
     ])

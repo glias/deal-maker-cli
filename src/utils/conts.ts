@@ -11,6 +11,10 @@ export const SECP256K1_CODE_HASH = '0x9bd7e06f3ecf4be0f2fcd2188b23f1b9fcc88e5d4b
 export const SECP256K1_TX_HASH = '0xf8de3bb47d055cdf460d93a2a6e1b05f7432f9777c8c474abf4eec1d4aee5d37'
 export const ORDERBOOK_TX_HASH = '0xcdfd397823f6a130294c72fbe397c469d459b83db401296c291db7b170b15839'
 export const WEB_UI_PORT = 3000
+export const FEE = BigInt(3)
+export const FEE_RATIO = BigInt(1_000)
+export const SHANNONS_RATIO = BigInt(10 ** 8)
+export const PRICE_RATIO = BigInt(10 ** 10)
 
 export const ORDER_SCRIPTS: any = {
   lock: {

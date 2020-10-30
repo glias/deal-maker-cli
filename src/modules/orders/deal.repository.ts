@@ -51,9 +51,9 @@ class DealRepository extends Repository<Deal> {
     })
   }
 
-  getPendingOrderIds(sudt_type_args: string) {
+  getPendingOrderIds(sudtTypeArgs: string) {
     return this.find({
-      where: { status: DealStatus.Pending, tokenId: sudt_type_args },
+      where: { status: DealStatus.Pending, tokenId: sudtTypeArgs },
       select: ['orderIds'],
     }).then(orders => orders.flatMap((o: Pick<Deal, 'orderIds'>) => o.orderIds.split(',')))
   }

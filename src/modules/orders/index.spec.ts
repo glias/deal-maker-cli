@@ -199,19 +199,6 @@ describe('Test orders service', () => {
     })
 
     describe('Part match, One ask order One bid order, left bid order', () => {
-      const bidOrder_2 = {
-        ...baseBidOrder,
-        price: BigInt(10 * 10 ** 10),
-        output: `{"capacity":"0x${(1203.6 * 10 * 10 ** 7).toString(
-          16,
-        )}","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
-          BigInt(0),
-          BigInt(120 * 10 ** 8),
-          BigInt(100_000_000_000),
-          '00',
-        )}"}`,
-      }
-
       const askOrder_2 = {
         ...baseAskOrder,
         price: BigInt(11 * 10 ** 10),
@@ -224,12 +211,24 @@ describe('Test orders service', () => {
       }
 
       it('return correct capacity and sudt amount when no ask order left', () => {
+        const bidOrder_2 = {
+          ...baseBidOrder,
+          price: BigInt(10 * 10 ** 10),
+          output: `{"capacity":"0x${(1203.6 * 10 * 10 ** 7).toString(
+            16,
+          )}","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+            BigInt(0),
+            BigInt(120 * 10 ** 8),
+            BigInt(100_000_000_000),
+            '00',
+          )}"}`,
+        }
         // @ts-ignore
         ordersService.startMatchAndReturnOutputs([bidOrder_2], [baseAskOrder])
         // @ts-ignore
         ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
         // @ts-ignore
-        rawTx = ordersService.generateRawTx()
+        const rawTx = ordersService.generateRawTx()
         expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(270000000))
         expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(90000000000))
         expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(30090000000))
@@ -241,12 +240,25 @@ describe('Test orders service', () => {
       })
 
       it('return correct capacity and sudt amount when left ask order have cant match', () => {
+        const bidOrder_2 = {
+          ...baseBidOrder,
+          price: BigInt(10 * 10 ** 10),
+          output: `{"capacity":"0x${(1203.6 * 10 * 10 ** 7).toString(
+            16,
+          )}","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+            BigInt(0),
+            BigInt(120 * 10 ** 8),
+            BigInt(100_000_000_000),
+            '00',
+          )}"}`,
+        }
+
         // @ts-ignore
         ordersService.startMatchAndReturnOutputs([bidOrder_2], [baseAskOrder, askOrder_2])
         // @ts-ignore
         ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
         // @ts-ignore
-        rawTx = ordersService.generateRawTx()
+        const rawTx = ordersService.generateRawTx()
         expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(270000000))
         expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(90000000000))
         expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(30090000000))
@@ -284,17 +296,16 @@ describe('Test orders service', () => {
         )}"}`,
       }
 
-      const askOrder_3 = {
-        ...baseAskOrder,
-        output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
-          BigInt(13_039_000_000),
-          BigInt(1170 * 10 ** 8),
-          BigInt(90_000_000_000),
-          '00',
-        )}"}`,
-      }
-
       it('return correct capacity and sudt amount when no bid order left', () => {
+        const askOrder_3 = {
+          ...baseAskOrder,
+          output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+            BigInt(13_039_000_000),
+            BigInt(1170 * 10 ** 8),
+            BigInt(90_000_000_000),
+            '00',
+          )}"}`,
+        }
         // @ts-ignore
         ordersService.startMatchAndReturnOutputs([bidOrder_3], [askOrder_3])
         // @ts-ignore
@@ -312,6 +323,15 @@ describe('Test orders service', () => {
       })
 
       it('return correct capacity and sudt amount when have bid order left but cant match', () => {
+        const askOrder_3 = {
+          ...baseAskOrder,
+          output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
+            BigInt(13_039_000_000),
+            BigInt(1170 * 10 ** 8),
+            BigInt(90_000_000_000),
+            '00',
+          )}"}`,
+        }
         // @ts-ignore
         ordersService.startMatchAndReturnOutputs([bidOrder_3, bidOrder_3_1], [askOrder_3])
         // @ts-ignore

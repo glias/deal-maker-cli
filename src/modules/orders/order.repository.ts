@@ -1,6 +1,6 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository, Not, In } from 'typeorm'
-import { parseOrderCell, SUDT_TYPE_ARGS_LIST } from '../../utils'
+import { parseOrderCell, SUDT_TYPE_ARGS_LIST, FEE, FEE_RATIO, SHANNONS_RATIO, PRICE_RATIO } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
 @injectable()
@@ -19,7 +19,7 @@ class OrderRepository extends Repository<Order> {
     return this.delete(id)
   }
 
-  async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = [], sudt_type_args: string) {
+  async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = [], sudtTypeArgs: string) {
     return this.find({
       skip: pageNo * this.#pageSize,
       take: this.#pageSize,
@@ -30,7 +30,7 @@ class OrderRepository extends Repository<Order> {
       where: {
         type: type,
         id: Not(In(pendingOrderIds)),
-        tokenId: sudt_type_args,
+        tokenId: sudtTypeArgs,
       },
     }).then(orders => orders.map(o => ({ ...o, price: BigInt(`0x${o.price}`) })))
   }
@@ -58,21 +58,36 @@ class OrderRepository extends Repository<Order> {
         })
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {
+    const lockScriptArgsLength = 66
     const smallestCapacity: bigint =
-      (cell.orderAmount * cell.price * BigInt(1003)) / BigInt(1000) / BigInt(10 ** 10) + BigInt(17900000000)
-    const biggestCapacityOrderAmount: bigint =
-      ((cell.sudtAmount - (cell.sudtAmount * BigInt(3)) / BigInt(1000)) * cell.price) / BigInt(10 ** 10)
+      (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
+      BigInt(17900000000)
+    const askOrderSpendSUDT = cell.orderAmount / ((cell.price * SHANNONS_RATIO) / PRICE_RATIO)
+    const smallestSudtOrderAmount: bigint = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
 
-    return (
-      cell.orderAmount === BigInt(0) ||
-      (cell.sudtAmount == BigInt(0) && cell.type === '01') ||
-      !['00', '01'].includes(cell.type) ||
-      (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) ||
-      (cell.type == '01' && cell.orderAmount > biggestCapacityOrderAmount) ||
-      !(cell.output.lock.args.length === 66) ||
-      cell.output.type?.args == undefined ||
-      !SUDT_TYPE_ARGS_LIST.includes(cell.output.type?.args)
-    )
+    if (!cell.orderAmount) {
+      return true
+    }
+    if (cell.sudtAmount == BigInt(0) && cell.type === '01') {
+      return true
+    }
+    if (!['00', '01'].includes(cell.type)) {
+      return true
+    }
+    if (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) {
+      return true
+    }
+    if (cell.type == '01' && cell.orderAmount < smallestSudtOrderAmount) {
+      return true
+    }
+    if (!(cell.output.lock.args.length === lockScriptArgsLength)) {
+      return true
+    }
+    if (cell.output.type?.args == undefined || !SUDT_TYPE_ARGS_LIST.includes(cell.output.type?.args)) {
+      return true
+    }
+
+    return false
   }
 }
 
