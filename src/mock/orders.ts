@@ -58,7 +58,7 @@ export const bidOrderWithLowerPrice: Order = {
   orderAmount: BigInt(10_000_000_000),
   sudtAmount: BigInt(0),
   output: {
-    capacity: '0x42b855eb0',
+    capacity: '0x680c1fa80',
     lock: {
       code_hash: 'code_hash_bid',
       hash_type: 'hash_type_bid' as any,
@@ -82,7 +82,7 @@ export const bidOrderWithHigherPrice: Order = {
   orderAmount: BigInt(10_000_000_000),
   sudtAmount: BigInt(1_000),
   output: {
-    capacity: '0x42de98d70',
+    capacity: '0xfd8189880',
     lock: {
       code_hash: 'code_hash_bid',
       hash_type: 'hash_type_bid' as any,
