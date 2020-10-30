@@ -62,7 +62,7 @@ class OrderRepository extends Repository<Order> {
     const smallestCapacity: bigint =
       (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
       BigInt(17900000000)
-    const askOrderSpendSUDT = cell.orderAmount / ((cell.price * SHANNONS_RATIO) / PRICE_RATIO)
+    const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO) / ((cell.price * SHANNONS_RATIO) / PRICE_RATIO)
     const smallestSudtOrderAmount: bigint = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
 
     if (!cell.orderAmount) {
@@ -77,7 +77,7 @@ class OrderRepository extends Repository<Order> {
     if (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) {
       return true
     }
-    if (cell.type == '01' && cell.orderAmount < smallestSudtOrderAmount) {
+    if (cell.type == '01' && cell.sudtAmount < smallestSudtOrderAmount) {
       return true
     }
     if (!(cell.output.lock.args.length === lockScriptArgsLength)) {
