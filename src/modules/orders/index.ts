@@ -31,12 +31,6 @@ import ConfigService from '../config'
 
 const logTag = `\x1b[35m[Orders Service]\x1b[0m`
 
-interface CachedCell extends CKBComponents.CellIncludingOutPoint {
-  status: string
-  dataHash: string
-  type?: CKBComponents.Script | null
-}
-
 @injectable()
 class OrdersService {
   #log = (msg: string) => {
@@ -85,7 +79,7 @@ class OrdersService {
       this.#log('No live cells')
       return
     }
-    function isSameSudt(cell: CachedCell) {
+    function isSameSudt(cell: RawTransactionParams.Cell) {
       return cell.type?.args == sudtTypeArgs || cell.type?.args === undefined
     }
     const sudtCells = liveCells.filter(isSameSudt)
@@ -518,7 +512,7 @@ class OrdersService {
   }
 
   // Generate dealmaker's fee cell
-  private pushDealerMakerCellAndData(biggestCell: CachedCell, dealMakerLock: CKBComponents.Script) {
+  private pushDealerMakerCellAndData(biggestCell: RawTransactionParams.Cell, dealMakerLock: CKBComponents.Script) {
     this.inputCells.unshift({ previousOutput: biggestCell.outPoint!, since: '0x0' })
     this.witnesses.unshift({
       lock: '',
