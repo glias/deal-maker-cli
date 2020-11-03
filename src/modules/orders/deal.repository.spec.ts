@@ -48,7 +48,7 @@ describe('Test deal repository', () => {
   it('get deals', async () => {
     await dealRepository.saveDeal(pendingDeal)
     await dealRepository.saveDeal(doneDeal)
-    const deals = await dealRepository.getDeals(0)
+    const deals = await dealRepository.getDeals(0, '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902')
     expect(deals).toHaveLength(2)
   })
 
@@ -71,7 +71,9 @@ describe('Test deal repository', () => {
     await dealRepository.saveDeal(pendingDeal)
     await dealRepository.saveDeal(pendingDeal_1)
     await dealRepository.saveDeal(doneDeal)
-    const pendingOrderIds = await dealRepository.getPendingOrderIds()
+    const pendingOrderIds = await dealRepository.getPendingOrderIds(
+      '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
+    )
     expect(pendingOrderIds).toEqual([...pendingDeal.orderIds.split(','), ...pendingDeal_1.orderIds.split(',')])
   })
 })

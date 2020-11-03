@@ -17,6 +17,7 @@ jest.setMock('../../utils/', {
   scanOrderCells: mockScanOrderCells,
   subscribeOrderCell: mockSubscribeOrderCell,
   checkPendingDeals: mockCheckPendingDeals,
+  SUDT_TYPE_ARGS_LIST: ['0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902'],
 })
 
 import 'reflect-metadata'
@@ -80,11 +81,10 @@ describe('Test tasks module', () => {
       expect(startIndexer).toBeCalledTimes(1)
       expect(scanOrderCells).toBeCalledTimes(1)
       expect(subscribeOrderCell).toBeCalledTimes(1)
-      expect(mockOrdersService.match).toBeCalledTimes(1)
     })
 
     it('should start a cron job', () => {
-      expect(mockCronConstructor).toBeCalledTimes(1)
+      expect(mockCronConstructor).toBeCalledTimes(2)
     })
   })
 

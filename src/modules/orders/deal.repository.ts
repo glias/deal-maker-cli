@@ -17,12 +17,15 @@ class DealRepository extends Repository<Deal> {
     return this.delete(txHash)
   }
 
-  getDeals(pageNo: number) {
+  getDeals(pageNo: number, args: string) {
     return this.find({
       skip: pageNo * this.#pageSize,
       take: this.#pageSize,
       order: {
         createdAt: 'DESC',
+      },
+      where: {
+        tokenId: args,
       },
     })
   }
@@ -48,9 +51,9 @@ class DealRepository extends Repository<Deal> {
     })
   }
 
-  getPendingOrderIds() {
+  getPendingOrderIds(sudtTypeArgs: string) {
     return this.find({
-      where: { status: DealStatus.Pending },
+      where: { status: DealStatus.Pending, tokenId: sudtTypeArgs },
       select: ['orderIds'],
     }).then(orders => orders.flatMap((o: Pick<Deal, 'orderIds'>) => o.orderIds.split(',')))
   }

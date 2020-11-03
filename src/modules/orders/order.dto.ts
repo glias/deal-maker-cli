@@ -6,4 +6,5 @@ export interface OrderDto {
   price: bigint
   blockNumber: number
   output: string
+  part?: boolean
 }

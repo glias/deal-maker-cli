@@ -4,7 +4,14 @@ import { CronJob } from 'cron'
 import { modules } from '../../container'
 import OrdersService from '../orders'
 import ConfigService from '../config'
-import { logger, startIndexer, scanOrderCells, subscribeOrderCell, checkPendingDeals } from '../../utils'
+import {
+  logger,
+  startIndexer,
+  scanOrderCells,
+  subscribeOrderCell,
+  checkPendingDeals,
+  SUDT_TYPE_ARGS_LIST,
+} from '../../utils'
 import { DealStatus } from '../orders/deal.entity'
 
 const logTag = `\x1b[35m[Tasks Service]\x1b[0m`
@@ -34,7 +41,9 @@ class TasksService {
     await this.startIndexer()
     await this.scanOrderCells()
     this.subscribeOrderCell()
-    this.#ordersService.match()
+    SUDT_TYPE_ARGS_LIST.forEach((args: string) => {
+      new CronJob(this.#schedule.match, () => this.#ordersService.prepareMatch(this.#indexer, args), null, true)
+    })
     new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
   }
 
@@ -64,7 +73,7 @@ class TasksService {
     )
 
     const now = Date.now()
-    const TIMEOUT = 10 * 3600 // ms
+    const TIMEOUT = 60 * 10 * 1000 // 10 minutes
 
     for (let i = 0; i < pendingDeals.length; i++) {
       const deal = pendingDeals[i]

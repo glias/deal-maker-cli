@@ -1,4 +1,4 @@
-import { parseOrderCell, parseOrderData } from './parser'
+import { formatOrderData, parseOrderCell, parseOrderData } from './parser'
 describe('Test parser', () => {
   it('parse order data', () => {
     const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001'
@@ -41,7 +41,14 @@ describe('Test parser', () => {
       type: '01',
       price: BigInt(50000000000),
       orderAmount: BigInt(100000000000),
+      sudtAmount: BigInt(50000000000),
       output: { ...CELL.cell_output, data: CELL.data },
     })
+  })
+
+  it('format order data', () => {
+    expect(formatOrderData(BigInt('20000000000'), BigInt('100000000000'), BigInt('100000000000'), '01')).toEqual(
+      '0x00c817a804000000000000000000000000e8764817000000000000000000000000e876481700000001',
+    )
   })
 })
