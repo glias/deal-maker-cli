@@ -59,7 +59,7 @@
     "@nervosnetwork/ckb-sdk-core": "0.37.0",
     "@nervosnetwork/ckb-sdk-rpc": "0.37.0",
     "class-validator": "0.12.2",
-    "commander": "6.1.0",
+    "commander": "6.2.0",
     "cron": "1.8.2",
     "inversify": "5.0.1",
     "reflect-metadata": "0.1.13",
