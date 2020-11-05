@@ -1,0 +1,6 @@
+.github
+.vscode
+.db
+docs
+lib
+node_modules

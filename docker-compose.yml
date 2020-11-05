@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  deal_maker:
+    build: .
+    volumes:
+      - deal_maker_db:/usr/app/.db
+    networks:
+      - node
+    depends_on:
+      - ckb-node
+    tty: true
+    environment:
+      NODE_ENV: development
+    command: bash -c "npx ts-node src/cli config --url http://ckb-node:8114 && npm start"
+
+  ckb-node:
+    image: nervos/ckb
+    environment:
+      CKB_CHAIN: dev
+    expose:
+      - 8114
+    networks:
+      - node
+    command: run
+
+networks:
+  node:
+
+volumes:
+  deal_maker_db:
