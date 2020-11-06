@@ -94,7 +94,7 @@ class OrdersService {
     const minerFee = this.calculateMinerFee(rawTx)
     const subMinerFeeTx = this.subMinerFeeAndUpdateOutputs(rawTx, minerFee)
     const dealRecord = this.generateDealStruct(minerFee, sudtTypeArgs)
-    this.sendTransactionAndSaveDeal(subMinerFeeTx, dealMakerLock, privateKey, dealRecord)
+    this.sendTransactionAndSaveDeal(subMinerFeeTx, privateKey, dealRecord)
     this.clearGlobalVariables()
   }
 
@@ -591,12 +591,11 @@ class OrdersService {
 
   private async sendTransactionAndSaveDeal(
     rawTransaction: CKBComponents.RawTransactionToSign,
-    lock: CKBComponents.Script,
     privateKey: string,
     deal: { txHash: string; status: number; orderIds: string; fee: string; tokenId: string },
   ) {
     try {
-      const response = await signAndSendTransaction(rawTransaction, privateKey, lock)
+      const response = await signAndSendTransaction(rawTransaction, privateKey)
       deal.txHash = response
     } catch (error) {
       this.#log(error)
