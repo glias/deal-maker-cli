@@ -31,6 +31,12 @@ npm install
 cp ormconfig.yml.example ormconfig.yml
 ```
 
+## Set Environment Variables
+
+```bash
+cp .env.example .env
+```
+
 ## Initialize Project
 
 ```bash

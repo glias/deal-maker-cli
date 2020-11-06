@@ -1,4 +1,4 @@
-# Deal Maker Cli Manual for Developers
+# Deal Maker CLI Manual for Developers
 
 ## Prerequisite
 
@@ -11,7 +11,8 @@ Follow the [guide](https://nodejs.org/en/download/) to install Node.js.
 ### Set environment variables
 
 ```bash
-cp ./ormconfig.yml.example ./ormconfig.yml
+cp ormconfig.yml.example ormconfig.yml
+cp .env.example .env
 ```
 
 ### Install Dependencies

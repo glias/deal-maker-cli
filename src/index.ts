@@ -3,7 +3,7 @@ import fs from 'fs'
 import { CronJob } from 'cron'
 import boostrap from './bootstrap'
 import { container, modules } from './container'
-import { logger, parseOrderData, UI_SUDT_TYPE_ARGS } from './utils'
+import { logger, parseOrderData, UI_SUDT_TYPE_ARGS, WEB_UI_PORT } from './utils'
 import ConfigService from './modules/config'
 import TasksService from './modules/tasks'
 import OrdersService from './modules/orders'
@@ -49,14 +49,16 @@ export default class DealMaker {
     this.#log(`Start with config ${JSON.stringify(config)}`)
     this.tasksService.start()
     // start web ui
-    this.#webUi = bootstrapWebUi({
-      onConnect: () => this.syncWebUi(UI_SUDT_TYPE_ARGS),
-      onSetConfig: (...args: Parameters<DealMaker['setConfig']>) => {
-        this.setConfig(...args)
-          .then(() => this.syncWebUi(UI_SUDT_TYPE_ARGS))
-          .then(() => process.exit(0))
-      },
-    })
+    if (WEB_UI_PORT) {
+      this.#webUi = bootstrapWebUi(+WEB_UI_PORT, {
+        onConnect: () => this.syncWebUi(UI_SUDT_TYPE_ARGS),
+        onSetConfig: (...args: Parameters<DealMaker['setConfig']>) => {
+          this.setConfig(...args)
+            .then(() => this.syncWebUi(UI_SUDT_TYPE_ARGS))
+            .then(() => process.exit(0))
+        },
+      })
+    }
     new CronJob('*/3 * * * * *', () => this.syncWebUi(UI_SUDT_TYPE_ARGS), null, true)
   }
 
