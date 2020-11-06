@@ -62,6 +62,7 @@
     "class-validator": "0.12.2",
     "commander": "6.2.0",
     "cron": "1.8.2",
+    "dotenv": "8.2.0",
     "inversify": "5.0.1",
     "reflect-metadata": "0.1.13",
     "socket.io": "2.3.0",
