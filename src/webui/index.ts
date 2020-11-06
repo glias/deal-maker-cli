@@ -2,7 +2,7 @@ import http from 'http'
 import fs from 'fs'
 import path from 'path'
 import Io from 'socket.io'
-import { WEB_UI_PORT, logger } from '../utils'
+import { logger } from '../utils'
 import { Config } from '../modules/config/config.entity'
 
 const logTag = `\x1b[35m[Web UI]\x1b[0m`
@@ -20,7 +20,7 @@ export interface Stat {
   }
 }
 
-const bootstrap = ({ onConnect, onSetConfig }: Record<'onConnect' | 'onSetConfig', Function>) => {
+const bootstrap = (port: number, { onConnect, onSetConfig }: Record<'onConnect' | 'onSetConfig', Function>) => {
   const viewContent = fs.readFileSync(path.join(__dirname, '..', '..', 'webui.html'), 'utf-8')
   const server = http.createServer((_, res) => {
     res.setHeader('Content-Type', 'text/html')
@@ -36,8 +36,8 @@ const bootstrap = ({ onConnect, onSetConfig }: Record<'onConnect' | 'onSetConfig
     })
   })
 
-  server.listen(WEB_UI_PORT, () => {
-    logger.info(`${logTag}: Web UI starts at ${WEB_UI_PORT}`)
+  server.listen(port, () => {
+    logger.info(`${logTag}: Web UI starts at ${port}`)
   })
 
   return {
