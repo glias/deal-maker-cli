@@ -58,36 +58,41 @@ class OrderRepository extends Repository<Order> {
         })
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {
-    const lockScriptArgsLength = 66
-    const smallestCapacity: bigint =
-      (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
-      BigInt(17900000000)
-    const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO) / ((cell.price * SHANNONS_RATIO) / PRICE_RATIO)
-    const smallestSudtOrderAmount: bigint = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
-
     if (!cell.orderAmount) {
       return true
     }
-    if (cell.sudtAmount == BigInt(0) && cell.type === '01') {
-      return true
-    }
-    if (!['00', '01'].includes(cell.type)) {
-      return true
-    }
-    if (cell.type == '00' && BigInt(cell.output.capacity) < smallestCapacity) {
-      return true
-    }
-    if (cell.type == '01' && cell.sudtAmount < smallestSudtOrderAmount) {
-      return true
-    }
-    if (!(cell.output.lock.args.length === lockScriptArgsLength)) {
-      return true
-    }
-    if (cell.output.type?.args == undefined || !SUDT_TYPE_ARGS_LIST.includes(cell.output.type?.args)) {
+
+    const LOCK_SCRIPT_ARGS_LENGTH = 66
+    if (cell.output.lock.args.length !== LOCK_SCRIPT_ARGS_LENGTH) {
       return true
     }
 
-    return false
+    if (!SUDT_TYPE_ARGS_LIST.includes(cell.output.type?.args ?? '')) {
+      return true
+    }
+
+    // TODO get min capacity and get min sudt amount
+    switch (+cell.type) {
+      case OrderType.Bid: {
+        const MIN_SHANNONS = BigInt(17_900_000_000)
+        const minCapacity =
+          (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
+          MIN_SHANNONS
+
+        return BigInt(cell.output.capacity) < minCapacity
+      }
+      case OrderType.Ask: {
+        if (!cell.sudtAmount) {
+          return true
+        }
+        const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO) / ((cell.price * SHANNONS_RATIO) / PRICE_RATIO)
+        const minSudtOrderAmount = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
+        return cell.sudtAmount < minSudtOrderAmount
+      }
+      default: {
+        return true
+      }
+    }
   }
 }
 

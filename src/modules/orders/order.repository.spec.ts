@@ -1,7 +1,6 @@
 import { createConnection, getConnection } from 'typeorm'
 import OrderRepository from './order.repository'
 import { OrderType } from './order.entity'
-import { parseOrderCell } from '../../utils/parser'
 import {
   askOrderWithLowerPrice,
   askOrderWithHigherPrice,
@@ -30,21 +29,82 @@ describe('Test order repository', () => {
   })
 
   describe('save order', () => {
-    it('should save order which has not zero order amount', async () => {
-      let count = await orderRepository.count()
-      expect(count).toBe(0)
-      await orderRepository.saveOrder(askOrderWithLowerPrice)
-      count = await orderRepository.count()
-      expect(count).toBe(1)
+    describe('should save when order is valid', () => {
+      it('order with non-zero order amount', async () => {
+        let count = await orderRepository.count()
+        expect(count).toBe(0)
+        await orderRepository.saveOrder(askOrderWithLowerPrice)
+        count = await orderRepository.count()
+        expect(count).toBe(1)
+      })
     })
 
-    it('should not save order which has zero order amount', async () => {
-      let count = await orderRepository.count()
-      expect(count).toBe(0)
-      const res = await orderRepository.saveOrder(orderWithZeroAmount)
-      expect(res).toBeNull()
-      count = await orderRepository.count()
-      expect(count).toBe(0)
+    describe('should not save when order is invalid', () => {
+      let count = 0
+      beforeEach(async () => {
+        count = 0
+        count = await orderRepository.count()
+        expect(count).toBe(0)
+      })
+      afterEach(async () => {
+        count = await orderRepository.count()
+        expect(count).toBe(0)
+      })
+      it('order with zero order amount', async () => {
+        const res = await orderRepository.saveOrder(orderWithZeroAmount)
+        expect(res).toBeNull()
+      })
+
+      it('order with invalid lock args', async () => {
+        const order = {
+          ...askOrderWithLowerPrice,
+          output: {
+            ...askOrderWithLowerPrice.output,
+            lock: {
+              ...askOrderWithLowerPrice.output.lock,
+              args: '0x0',
+            },
+          },
+        }
+        const res = await orderRepository.saveOrder(order)
+      })
+      it('order without type script', async () => {
+        const order = {
+          ...askOrderWithLowerPrice,
+          output: { ...askOrderWithLowerPrice.output, type: null },
+        }
+        const res = await orderRepository.saveOrder(order)
+      })
+      it('order without type args', async () => {
+        const order = {
+          ...askOrderWithLowerPrice,
+          output: {
+            ...askOrderWithLowerPrice.output,
+            type: {
+              ...askOrderWithLowerPrice.output.type!,
+              args: null,
+            },
+          },
+        }
+        const res = await orderRepository.saveOrder(order)
+      })
+      it('order with type args outside the whitelist', async () => {
+        const order = {
+          ...askOrderWithLowerPrice,
+          output: {
+            ...askOrderWithLowerPrice.output,
+            type: {
+              ...askOrderWithLowerPrice.output.type!,
+              args: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+            },
+          },
+        }
+        const res = await orderRepository.saveOrder(order)
+      })
+      it('order with invalid order type', async () => {
+        const order = { ...askOrderWithLowerPrice, type: '02' }
+        const res = await orderRepository.saveOrder(order)
+      })
     })
   })
 
