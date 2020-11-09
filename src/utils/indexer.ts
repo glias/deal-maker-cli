@@ -39,6 +39,7 @@ export const subscribeOrderCell = async (indexer: Indexer, handler: Function) =>
   })
 
   let timer: NodeJS.Timeout
+  /* istanbul ignore next */
   subscription.on('changed', () => {
     clearTimeout(timer)
     timer = setTimeout(() => {
