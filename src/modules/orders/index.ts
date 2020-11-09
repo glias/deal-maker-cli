@@ -2,7 +2,6 @@ import CKB from '@nervosnetwork/ckb-sdk-core'
 import { getTransactionSize } from '@nervosnetwork/ckb-sdk-utils/lib/sizes'
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import type { Cell } from '@ckb-lumos/base'
-import fs from 'fs'
 import { injectable } from 'inversify'
 import { getConnection } from 'typeorm'
 import OrderRepository from './order.repository'
@@ -11,12 +10,12 @@ import { OrderDto } from './order.dto'
 import DealRepository from './deal.repository'
 import {
   logger,
+  getPrivateKey,
   parseOrderCell,
   parseOrderData,
   bigIntToUint128Le,
   SUDT_TX_HASH,
   signAndSendTransaction,
-  DEFAULT_NODE_URL,
   formatOrderData,
   SECP256K1_CODE_HASH,
   SECP256K1_TX_HASH,
@@ -36,6 +35,9 @@ class OrdersService {
   #log = (msg: string) => {
     logger.info(`${logTag}: ${msg}`)
   }
+  #warn = (msg: string) => {
+    logger.warn(`${logTag}: ${msg}`)
+  }
   #orderRepository = getConnection(process.env.NODE_ENV).getCustomRepository(OrderRepository)
   #dealRepository = getConnection(process.env.NODE_ENV).getCustomRepository(DealRepository)
 
@@ -54,48 +56,66 @@ class OrdersService {
   Such as set private key; check order list is not empty; check deal maker have live cells etc.
   Other sync order filter conditions are define in orders/order.repository.ts toCell function.
   */
-  public async prepareMatch(indexer: Indexer, sudtTypeArgs: string) {
-    const ckb = new CKB(DEFAULT_NODE_URL)
-    const { privateKey, dealMakerLock } = await this.calDealMakerPrivateKeyAndLock(ckb)
-    if (privateKey === null || dealMakerLock === undefined) {
-      this.#log('No private key path set')
-      return
+  public async prepareMatch(indexer: Indexer, sudtTypeArgs: string): Promise<boolean> {
+    const configService = new ConfigService()
+    const config = await configService.getConfig()
+
+    const privateKey = getPrivateKey(config.keyFile ?? '')
+
+    if (!privateKey) {
+      this.#warn('No private key path set')
+      return false
     }
 
-    const bidOrderList = await this.getBidOrders(sudtTypeArgs)
-    const askOrderList = await this.getAskOrders(sudtTypeArgs)
-    if (askOrderList.length == 0 || bidOrderList.length == 0) {
+    const [bidOrderList, askOrderList] = await Promise.all([
+      this.getBidOrders(sudtTypeArgs),
+      this.getAskOrders(sudtTypeArgs),
+    ])
+
+    if (!askOrderList.length || !bidOrderList.length) {
       this.#log('Order list is empty')
-      return
+      return false
     }
 
     const outputs = this.startMatchAndReturnOutputs(bidOrderList, askOrderList)
-    if (outputs.length == 0) {
-      return
+    if (!outputs.length) return false
+
+    const ckb = new CKB(config.remoteUrl)
+    const publicKey = ckb.utils.privateKeyToPublicKey(privateKey)
+    const publicKeyHash = `0x${ckb.utils.blake160(publicKey, 'hex')}`
+
+    const dealMakerLock: CKBComponents.Script = {
+      codeHash: SECP256K1_CODE_HASH,
+      hashType: 'type',
+      args: publicKeyHash,
     }
 
     const liveCells = await ckb.loadCells({ indexer, CellCollector, lock: dealMakerLock })
-    if (liveCells.length == 0) {
+    if (!liveCells.length) {
       this.#log('No live cells')
-      return
+      return false
     }
-    function isSameSudt(cell: RawTransactionParams.Cell) {
-      return cell.type?.args == sudtTypeArgs || cell.type?.args === undefined
-    }
-    const sudtCells = liveCells.filter(isSameSudt)
-    const biggestCell = sudtCells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
-    if (biggestCell == undefined) {
+
+    const sudtCells = liveCells.filter(cell => cell.type?.args == sudtTypeArgs || cell.type?.args === undefined)
+    if (!sudtCells.length) {
       this.#log(`No normal cells or ${sudtTypeArgs} live cells`)
-      return
+      return false
     }
+
+    const biggestCell = sudtCells.sort((cell1, cell2) => Number(BigInt(cell2.capacity) - BigInt(cell1.capacity)))[0]
+
     this.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
 
     const rawTx = this.generateRawTx()
-    const minerFee = this.calculateMinerFee(rawTx)
-    const subMinerFeeTx = this.subMinerFeeAndUpdateOutputs(rawTx, minerFee)
+    const minerFee = BigInt(getTransactionSize(rawTx)) * FEE_RATIO
+    rawTx.outputs[0].capacity = '0x' + (BigInt(rawTx.outputs[0].capacity) - minerFee).toString(16)
+
+    this.outputsCells[0] = rawTx.outputs[0]
+
     const dealRecord = this.generateDealStruct(minerFee, sudtTypeArgs)
-    this.sendTransactionAndSaveDeal(subMinerFeeTx, privateKey, dealRecord)
+    this.sendTransactionAndSaveDeal({ ...rawTx, outputs: this.outputsCells }, privateKey, dealRecord)
     this.clearGlobalVariables()
+    return true
   }
 
   public saveOrder = (cell: Cell) => {
@@ -149,32 +169,6 @@ class OrdersService {
 
   public getPendingDeals = () => {
     return this.#dealRepository.getPendingDeals()
-  }
-
-  private async calDealMakerPrivateKeyAndLock(
-    ckb: CKB,
-  ): Promise<{ privateKey: null | string; dealMakerLock: undefined | CKBComponents.Script }> {
-    const configService = new ConfigService()
-    const config = await configService.getConfig()
-    if (config.keyFile === null) {
-      return {
-        privateKey: null,
-        dealMakerLock: undefined,
-      }
-    }
-
-    const privateKey = fs.readFileSync(config.keyFile, 'utf-8').trim()
-    const publicKey = ckb.utils.privateKeyToPublicKey(privateKey)
-    const publicKeyHash = `0x${ckb.utils.blake160(publicKey, 'hex')}`
-    const dealMakerLock: CKBComponents.Script = {
-      codeHash: SECP256K1_CODE_HASH,
-      hashType: 'type',
-      args: publicKeyHash,
-    }
-    return {
-      privateKey,
-      dealMakerLock,
-    }
   }
 
   /*
@@ -255,7 +249,7 @@ class OrdersService {
       We transfer ask order's ckb order amount to actual spend sudt amount,
       and then compare with bid order's sudt order amount to judge that it is full mtached or partially matched
       */
-      if (bidSudtOrderAmount == askActualSpendSudtAmount) {
+      if (bidSudtOrderAmount === askActualSpendSudtAmount) {
         // For done bid order, add order SUDT amount to current amount, and set order amount 0, then sub used capacity and fee.
         const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
           bidPrice: bidPrice,
@@ -347,19 +341,19 @@ class OrdersService {
       }
 
       // Next four condtions means we can't match again, so jump out this function
-      if (bidOrderList.length == 0 && askOrderList.length == 0) {
+      if (!bidOrderList.length && !askOrderList.length) {
         return this.outputsCells
       }
 
-      if (askOrderList.length == 0 && bidOrderList[0].part) {
+      if (!askOrderList.length && bidOrderList[0].part) {
         return this.stopMatchAndReturnOutputs(bidMatchOrder)
       }
 
-      if (bidOrderList.length == 0 && askOrderList[0].part) {
+      if (!bidOrderList.length && askOrderList[0].part) {
         return this.stopMatchAndReturnOutputs(askMatchOrder)
       }
 
-      if (bidOrderList.length == 0 || askOrderList.length == 0) {
+      if (!bidOrderList.length || !askOrderList.length) {
         return this.outputsCells
       }
 
@@ -527,22 +521,6 @@ class OrdersService {
     }
     this.outputsCells.unshift(dealMakerCell)
     this.outputsData.unshift(`0x${bigIntToUint128Le(this.dealMakerSudtAmount)}`)
-  }
-
-  private calculateMinerFee(rawTx: CKBComponents.RawTransactionToSign): bigint {
-    return BigInt(getTransactionSize(rawTx)) * FEE_RATIO
-  }
-
-  private subMinerFeeAndUpdateOutputs(
-    rawTx: CKBComponents.RawTransactionToSign,
-    minerFee: bigint,
-  ): CKBComponents.RawTransactionToSign {
-    let dealMakerOutput: CKBComponents.Cell = rawTx.outputs[0]
-    const dealMakerCapacity = '0x' + (BigInt(rawTx.outputs[0].capacity) - minerFee).toString(16)
-    dealMakerOutput.capacity = dealMakerCapacity
-    this.outputsCells.shift()
-    this.outputsCells.unshift(dealMakerOutput)
-    return { ...rawTx, outputs: this.outputsCells }
   }
 
   private generateRawTx() {
