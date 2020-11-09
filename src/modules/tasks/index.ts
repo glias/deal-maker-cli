@@ -41,7 +41,9 @@ class TasksService {
     await this.startIndexer()
     await this.scanOrderCells()
     this.subscribeOrderCell()
+    // REFACTOR: should start a single cron job
     SUDT_TYPE_ARGS_LIST.forEach((args: string) => {
+      // istanbul ignore next
       new CronJob(this.#schedule.match, () => this.#ordersService.prepareMatch(this.#indexer, args), null, true)
     })
     new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
