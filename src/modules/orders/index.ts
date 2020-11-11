@@ -1,5 +1,5 @@
-import CKB from '@nervosnetwork/ckb-sdk-core'
-import { getTransactionSize } from '@nervosnetwork/ckb-sdk-utils/lib/sizes'
+import loadCells from '@nervosnetwork/ckb-sdk-core/lib/loadCellsFromIndexer'
+import { getTransactionSize, privateKeyToPublicKey, blake160 } from '@nervosnetwork/ckb-sdk-utils'
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import type { Cell } from '@ckb-lumos/base'
 import { injectable } from 'inversify'
@@ -26,13 +26,12 @@ import {
   PRICE_RATIO,
 } from '../../utils'
 import { Deal, DealStatus } from './deal.entity'
-import ConfigService from '../config'
 
 const logTag = `\x1b[35m[Orders Service]\x1b[0m`
 
 @injectable()
 class OrdersService {
-  #log = (msg: string) => {
+  #info = (msg: string) => {
     logger.info(`${logTag}: ${msg}`)
   }
   #warn = (msg: string) => {
@@ -56,11 +55,8 @@ class OrdersService {
   Such as set private key; check order list is not empty; check deal maker have live cells etc.
   Other sync order filter conditions are define in orders/order.repository.ts toCell function.
   */
-  public async prepareMatch(indexer: Indexer, sudtTypeArgs: string): Promise<boolean> {
-    const configService = new ConfigService()
-    const config = await configService.getConfig()
-
-    const privateKey = getPrivateKey(config.keyFile ?? '')
+  public async prepareMatch(sudtTypeArgs: string, indexer: Indexer, keyFile: string | null): Promise<boolean> {
+    const privateKey = getPrivateKey(keyFile ?? '')
 
     if (!privateKey) {
       this.#warn('No private key path set')
@@ -73,16 +69,15 @@ class OrdersService {
     ])
 
     if (!askOrderList.length || !bidOrderList.length) {
-      this.#log('Order list is empty')
+      this.#info('Order list is empty')
       return false
     }
 
     const outputs = this.startMatchAndReturnOutputs(bidOrderList, askOrderList)
     if (!outputs.length) return false
 
-    const ckb = new CKB(config.remoteUrl)
-    const publicKey = ckb.utils.privateKeyToPublicKey(privateKey)
-    const publicKeyHash = `0x${ckb.utils.blake160(publicKey, 'hex')}`
+    const publicKey = privateKeyToPublicKey(privateKey)
+    const publicKeyHash = `0x${blake160(publicKey, 'hex')}`
 
     const dealMakerLock: CKBComponents.Script = {
       codeHash: SECP256K1_CODE_HASH,
@@ -90,15 +85,15 @@ class OrdersService {
       args: publicKeyHash,
     }
 
-    const liveCells = await ckb.loadCells({ indexer, CellCollector, lock: dealMakerLock })
+    const liveCells = await loadCells({ indexer, CellCollector, lock: dealMakerLock })
     if (!liveCells.length) {
-      this.#log('No live cells')
+      this.#info('No live cells')
       return false
     }
 
-    const sudtCells = liveCells.filter(cell => cell.type?.args == sudtTypeArgs || cell.type?.args === undefined)
+    const sudtCells = liveCells.filter(cell => cell.type?.args === sudtTypeArgs || !cell.type)
     if (!sudtCells.length) {
-      this.#log(`No normal cells or ${sudtTypeArgs} live cells`)
+      this.#info(`No normal cells or ${sudtTypeArgs} live cells`)
       return false
     }
 
@@ -113,7 +108,16 @@ class OrdersService {
     this.outputsCells[0] = rawTx.outputs[0]
 
     const dealRecord = this.generateDealStruct(minerFee, sudtTypeArgs)
-    this.sendTransactionAndSaveDeal({ ...rawTx, outputs: this.outputsCells }, privateKey, dealRecord)
+
+    try {
+      const response = await signAndSendTransaction({ ...rawTx, outputs: this.outputsCells }, privateKey)
+      dealRecord.txHash = response
+    } catch (error) {
+      this.#warn(error)
+      dealRecord.status = DealStatus.Failed
+    }
+
+    this.saveDeal(dealRecord)
     this.clearGlobalVariables()
     return true
   }
@@ -228,7 +232,7 @@ class OrdersService {
 
         return this.outputsCells
       } else {
-        this.#log('No match')
+        this.#info('No match')
         return []
       }
     } else {
@@ -565,22 +569,6 @@ class OrdersService {
       fee: fee,
       status: DealStatus.Pending,
     }
-  }
-
-  private async sendTransactionAndSaveDeal(
-    rawTransaction: CKBComponents.RawTransactionToSign,
-    privateKey: string,
-    deal: { txHash: string; status: number; orderIds: string; fee: string; tokenId: string },
-  ) {
-    try {
-      const response = await signAndSendTransaction(rawTransaction, privateKey)
-      deal.txHash = response
-    } catch (error) {
-      this.#log(error)
-      deal.status = DealStatus.Failed
-    }
-
-    this.saveDeal(deal)
   }
 
   private clearGlobalVariables() {
