@@ -17,12 +17,12 @@ export const PRICE_RATIO = BigInt(10 ** 10)
 export const ORDER_SCRIPTS: any = {
   lock: {
     args: '0x',
-    code_hash: '0x9c833b9ebd4259ca044d2c47c5e51b7fc25380b07291e54b248d3808f08ed7fd',
+    code_hash: process.env.ORDERBOOK_LOCK_SCRIPT_CODE_HASH!,
     hash_type: 'type',
   },
   type: {
     args: '0x',
     code_hash: process.env.ORDERBOOK_TYPE_SCRIPT_CODE_HASH!,
-    hash_type: 'type',
+    hash_type: process.env.ORDERBOOK_TYPE_SCRIPT_HASH_TYPE!,
   },
 }
