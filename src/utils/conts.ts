@@ -1,5 +1,5 @@
 import 'dotenv/config'
-export const DEFAULT_NODE_URL = 'http://localhost:8114'
+export const DEFAULT_NODE_URL = process.env.NODE_URL
 export const DEFAULT_FEE_PRICE = '1000'
 export const INDEXER_DB = 'indexer-data'
 export const SUDT_TYPE_ARGS_LIST = process.env.SUDT_TYPE_ARGS_LIST?.split(',') ?? []
