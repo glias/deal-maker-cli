@@ -1,9 +1,15 @@
 const mockLogger = { info: jest.fn(), warn: jest.fn() }
+const mockGetPrivateKey = jest.fn()
+const mockLoadCells = jest.fn()
+const mockSignAndSendTransaction = jest.fn()
 
 jest.doMock('../../utils', () => ({
   ...jest.requireActual('../../utils'),
   logger: mockLogger,
+  getPrivateKey: mockGetPrivateKey,
+  signAndSendTransaction: mockSignAndSendTransaction,
 }))
+jest.doMock('@nervosnetwork/ckb-sdk-core/lib/loadCellsFromIndexer', () => mockLoadCells)
 
 import { Connection, createConnection } from 'typeorm'
 import OrdersService from '.'
@@ -21,6 +27,7 @@ describe('Test orders service', () => {
   let orderRepository: OrderRepository
   let dealRepository: DealRepository
   let rawTx: CKBComponents.RawTransactionToSign
+  const mockIndexer: any = jest.fn()
 
   beforeEach(async () => {
     connection = await createConnection('test')
@@ -575,6 +582,74 @@ describe('Test orders service', () => {
         })
       })
 
+      describe('should return true when transaction is send and saved', () => {
+        let mockSaveDeal
+        beforeEach(() => {
+          mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([1, 2])
+          jest.spyOn(ordersService, 'pushDealerMakerCellAndData' as any).mockReturnValue(undefined)
+          jest.spyOn(ordersService, 'generateRawTx' as any).mockReturnValue({
+            version: '0x0',
+            headerDeps: [],
+            cellDeps: [],
+            inputs: [],
+            outputs: [{ capacity: '0x1000', lock: { codeHash: '0x', hashType: 'type', args: '0x' } }],
+            witnesses: [],
+            outputsData: [],
+          })
+          mockSaveDeal = jest.spyOn(ordersService, 'saveDeal').mockReturnValue(undefined)
+          mockLoadCells.mockResolvedValue([
+            {
+              type: {
+                args: 'mock_sudt_args',
+              },
+              capacity: '0x10000000000',
+            },
+            {
+              type: {
+                args: 'mock_sudt_args',
+              },
+              capacity: '0x10000000001',
+            },
+          ])
+        })
+        describe('when send tx successfully', () => {
+          beforeEach(() => {
+            mockSignAndSendTransaction.mockResolvedValue('mock_tx_hash')
+          })
+          it('should return true and deal record is saved with pending status', async () => {
+            const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+            expect(res).toBe(true)
+            expect(mockSaveDeal).toBeCalledWith(
+              expect.objectContaining({
+                txHash: 'mock_tx_hash',
+                tokenId: 'mock_sudt_args',
+                status: DealStatus.Pending,
+              }),
+            )
+          })
+        })
+
+        describe('when send tx unsuccessfully', async () => {
+          beforeEach(() => {
+            mockSignAndSendTransaction.mockRejectedValue(undefined)
+          })
+          it('should return true and deal record is saved with failed status', async () => {
+            const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+            expect(res).toBe(true)
+            expect(mockSaveDeal).toBeCalledWith(
+              expect.objectContaining({
+                txHash: '',
+                tokenId: 'mock_sudt_args',
+                status: DealStatus.Failed,
+              }),
+            )
+          })
+        })
+      })
+
       describe('clear global varibale', () => {
         it('clear successfully', () => {
           ordersService.inputCells = [
@@ -594,22 +669,69 @@ describe('Test orders service', () => {
         })
       })
     })
-    describe('Handle exception', () => {
-      const mockIndexer: any = jest.fn()
-      describe('should warn and return false when key is missing', () => {
-        it('key file path is null', async () => {
-          const res = await ordersService.prepareMatch(mockIndexer, '')
-          expect(res).toBe(false)
-          expect(mockLogger.warn).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: No private key path set')
-        })
+    describe('Handle exception during matching orders', () => {
+      it('should warn and return false when key is missing', async () => {
+        mockGetPrivateKey.mockReturnValue(null)
+        const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+        expect(res).toBe(false)
+        expect(mockLogger.warn).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: No private key path set')
+      })
+      it('should log and return false when order list is empty', async () => {
+        mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+        const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+        expect(res).toBe(false)
+        expect(mockLogger.info).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: Order list is empty')
+      })
 
-        it.skip('key file is invalid', async () => {
-          const res = await ordersService.prepareMatch(mockIndexer, '')
+      describe('when orderService#startMatchAndReturnOutputs returns an empty array', () => {
+        beforeEach(() => {
+          mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([])
+        })
+        it('should return false', async () => {
+          const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
           expect(res).toBe(false)
-          expect(mockLogger.warn).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: No private key path set')
         })
       })
-      it.skip('should log and return false when order list is empty', async () => {})
+      describe('when live cells is empty', () => {
+        beforeEach(() => {
+          mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([1, 2])
+          mockLoadCells.mockResolvedValue([])
+        })
+        it('should return false', async () => {
+          const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+          expect(res).toBe(false)
+          expect(mockLogger.info).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: No live cells')
+        })
+      })
+
+      describe('when sudt/normal cells is empty', () => {
+        beforeEach(() => {
+          mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([1, 2])
+          mockLoadCells.mockResolvedValue([
+            {
+              type: {
+                args: 'mock_invalid_sudt_type_args',
+              },
+            },
+          ])
+        })
+        it('should return false', async () => {
+          const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+          expect(res).toBe(false)
+          expect(mockLogger.info).toBeCalledWith(
+            '\x1b[35m[Orders Service]\x1b[0m: No normal cells or mock_sudt_args live cells',
+          )
+        })
+      })
     })
   })
 })
