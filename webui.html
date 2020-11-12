@@ -49,6 +49,12 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      details#set-config-panel {
+        display: none;
+      }
+      details#set-config-panel.admin {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -138,7 +144,7 @@
 
     <hr />
 
-    <details>
+    <details id="set-config-panel">
       <summary>
         <h3>Set Config</h3>
       </summary>
@@ -169,6 +175,7 @@
       const configTable = document.querySelector('#config tbody')
       const remoteUrlForm = document.querySelector('#remote-url')
       const keyFileForm = document.querySelector('#key-file')
+      const setConfigPanel = document.querySelector('#set-config-panel')
 
       remoteUrlForm.addEventListener('submit', e => {
         e.preventDefault()
@@ -185,10 +192,9 @@
       })
 
       const updateOrderTable = (_table, _orders, _reverse) => {
-        let rows = _orders
-          .map(
-            (_order, _idx) =>
-              `<tr>
+        let rows = _orders.map(
+          (_order, _idx) =>
+            `<tr>
             <td>${_idx + 1}</td>
             <td>${_order.price}</td>
             <td>${BigInt(_order.capacity)}</td>
@@ -196,7 +202,7 @@
             <td>${_order.sudtAmount}</td>
             <td title=${_order.outPoint}>${_order.outPoint}</td>
             </tr>`,
-          )
+        )
         if (_reverse) {
           rows = rows.reverse()
         }
@@ -247,12 +253,17 @@
         _table.innerHTML = rows
       }
 
+      const toggleSetConfigPanel = type => {
+        setConfigPanel.className = type
+      }
+
       socket.on('stat', stat => {
         updateOrderTable(askOrderTable, stat.askOrders, true)
         updateOrderTable(bidOrderTable, stat.bidOrders, false)
         updateDealTable(dealTable, stat.deals)
         updateConfigTable(configTable, stat.config)
         updateSyncStateTable(syncStateTable, stat.syncState)
+        toggleSetConfigPanel(stat.type)
       })
     </script>
   </body>

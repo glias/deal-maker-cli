@@ -128,6 +128,7 @@ export default class DealMaker {
           orderAmount: orderAmount.toString(),
           outPoint: order.id,
           capacity: output.capacity,
+          type: process.env.WEB_UI_USER || 'user',
         }
       } catch (err) {
         return {
@@ -154,6 +155,12 @@ export default class DealMaker {
       this.configService.getConfig(),
       this.tasksService.getSyncState(),
     ])
-    this.#webUi.stat({ askOrders, bidOrders, config, deals, syncState })
+
+    const type = process.env.WEB_UI_USER || 'user'
+    if (type !== 'admin') {
+      config.keyFile = null
+    }
+
+    this.#webUi.stat({ askOrders, bidOrders, config, deals, syncState, type })
   }
 }
