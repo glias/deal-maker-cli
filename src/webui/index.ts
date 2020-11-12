@@ -18,6 +18,7 @@ export interface Stat {
   syncState: {
     tip: number
   }
+  type: string
 }
 
 const bootstrap = (port: number, { onConnect, onSetConfig }: Record<'onConnect' | 'onSetConfig', Function>) => {
@@ -32,7 +33,9 @@ const bootstrap = (port: number, { onConnect, onSetConfig }: Record<'onConnect' 
   io.on('connect', socket => {
     onConnect()
     socket.on('set-config', (key: string, value: string) => {
-      onSetConfig(key, value)
+      if (process.env.WEB_UI_USER === 'admin') {
+        onSetConfig(key, value)
+      }
     })
   })
 
