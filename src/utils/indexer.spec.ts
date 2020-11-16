@@ -10,8 +10,9 @@ class MockCellCollector {
     mockCellCollectorConstructor(...args)
   }
   async *collect() {
-    yield 'mock_cell_0'
-    yield 'mock_cell_1'
+    yield { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0600000000' }
+    yield { data: '0x' }
+    yield { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0611111111' }
     return
   }
 }
@@ -75,9 +76,12 @@ describe('Test Indexer Utils', () => {
       expect(mockCellCollectorConstructor).toBeCalledWith(indexer, QUERY_OPTION)
     })
 
-    it('should handle mock_cell_0 and mock_cell_1', async () => {
+    it('should handle 2 mock cell and skip invalid cell', async () => {
       const res = await scanOrderCells(indexer, mockCellHandler)
-      expect(mockCellHandler).toBeCalledWith(['mock_cell_0', 'mock_cell_1'])
+      expect(mockCellHandler).toBeCalledWith([
+        { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0600000000' },
+        { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0611111111' },
+      ])
       expect(res).toBe(2)
     })
   })

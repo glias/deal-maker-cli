@@ -13,6 +13,7 @@ export const FEE = BigInt(3)
 export const FEE_RATIO = BigInt(1_000)
 export const SHANNONS_RATIO = BigInt(10 ** 8)
 export const PRICE_RATIO = BigInt(10 ** 10)
+export const ORDER_DATA_LENGTH = 84
 
 export const ORDER_SCRIPTS: any = {
   lock: {
@@ -26,3 +27,21 @@ export const ORDER_SCRIPTS: any = {
     hash_type: process.env.ORDERBOOK_TYPE_SCRIPT_HASH_TYPE!,
   },
 }
+
+export const MATCH_ORDERS_CELL_DEPS = [
+  {
+    outPoint: {
+      txHash: SUDT_TX_HASH,
+      index: '0x0',
+    },
+    depType: 'code' as CKBComponents.DepType,
+  },
+  {
+    outPoint: { txHash: ORDERBOOK_TX_HASH, index: '0x0' },
+    depType: 'code' as CKBComponents.DepType,
+  },
+  {
+    outPoint: { txHash: SECP256K1_TX_HASH, index: '0x0' },
+    depType: 'depGroup' as CKBComponents.DepType,
+  },
+]
