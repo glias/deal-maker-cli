@@ -1,9 +1,13 @@
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import { Cell } from '@ckb-lumos/base'
 import { logger } from './logger'
-import { ORDER_SCRIPTS } from './conts'
+import { ORDER_SCRIPTS, ORDER_DATA_LENGTH } from './conts'
 
 const logTag = `\x1b[35m[Indexer]\x1b[0m`
+
+const isCellValid = (cell: Cell) => {
+  return cell.data?.length === ORDER_DATA_LENGTH
+}
 
 export const startIndexer = async (url: string, dbPath: string) => {
   const indexer = new Indexer(url, dbPath)
@@ -23,7 +27,9 @@ export const scanOrderCells = async (indexer: Indexer, cellHandler: (cell: Cell[
 
   const cells: Cell[] = []
   for await (const cell of cellCollector.collect()) {
-    cells.push(cell)
+    if (isCellValid(cell)) {
+      cells.push(cell)
+    }
   }
   await cellHandler(cells)
   return cells.length

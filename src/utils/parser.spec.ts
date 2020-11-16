@@ -1,4 +1,4 @@
-import { formatOrderData, parseOrderCell, parseOrderData } from './parser'
+import { formatOrderData, parseOrderCell, parseOrderData, parsePlaceOrderTx } from './parser'
 describe('Test parser', () => {
   it('parse order data', () => {
     const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001'
@@ -50,5 +50,86 @@ describe('Test parser', () => {
     expect(formatOrderData(BigInt('20000000000'), BigInt('100000000000'), BigInt('100000000000'), '01')).toEqual(
       '0x00c817a804000000000000000000000000e8764817000000000000000000000000e876481700000001',
     )
+  })
+
+  it('parse place order tx', () => {
+    const fixture: any = {
+      inputs: {
+        miner: { capacity: BigInt(1000000031979808), sudtAmount: BigInt(149551) },
+        orders: [
+          {
+            sudtAmount: BigInt(300000000),
+            orderAmount: BigInt(897308075),
+            price: BigInt(30000000000),
+            type: '01',
+            capacity: BigInt(17910000000),
+          },
+          {
+            sudtAmount: BigInt(49850448),
+            orderAmount: BigInt(4037886341),
+            price: BigInt(30000000000),
+            type: '00',
+            capacity: BigInt(30100000001),
+          },
+        ],
+      },
+      outputs: {
+        miner: { capacity: BigInt(1000000033612732), sudtAmount: BigInt(897308) },
+        orders: [
+          {
+            sudtAmount: BigInt(1),
+            orderAmount: BigInt(0),
+            price: BigInt(30000000000),
+            type: '01',
+            capacity: BigInt(18807308075),
+          },
+          {
+            sudtAmount: BigInt(348953139),
+            orderAmount: BigInt(3738783650),
+            price: BigInt(30000000000),
+            type: '00',
+            capacity: BigInt(29200000002),
+          },
+        ],
+      },
+    }
+
+    expect(parsePlaceOrderTx(fixture.inputs, fixture.outputs)).toEqual({
+      askLogs: [
+        {
+          'capacity:after': BigInt(18807308075),
+          'capacity:before': BigInt(17910000000),
+          'capacity:delta': BigInt(897308075),
+          'name': 'ask 0',
+          'sudt:after': BigInt(1),
+          'sudt:before': BigInt(300000000),
+          'sudt:delta': BigInt(-299999999),
+        },
+      ],
+      bidLogs: [
+        {
+          'capacity:after': BigInt(29200000002),
+          'capacity:before': BigInt(30100000001),
+          'capacity:delta': BigInt(-899999999),
+          'name': 'bid 0',
+          'sudt:after': BigInt(348953139),
+          'sudt:before': BigInt(49850448),
+          'sudt:delta': BigInt(299102691),
+        },
+      ],
+      delta: {
+        capacity: BigInt(-1059000),
+        sudt: BigInt(-149551),
+      },
+      minerLog: {
+        'capacity:after': BigInt(1000000033612732),
+        'capacity:before': BigInt(1000000031979808),
+        'capacity:delta': BigInt(1632924),
+        'name': 'miner',
+        'sudt:after': BigInt(897308),
+        'sudt:before': BigInt(149551),
+        'sudt:delta': BigInt(747757),
+      },
+    })
   })
 })

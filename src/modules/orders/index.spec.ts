@@ -553,7 +553,7 @@ describe('Test orders service', () => {
         })
       })
 
-      describe('generateDealStruct', () => {
+      describe('generateDeal', () => {
         it('returns correct deal Struct', () => {
           ordersService.inputCells = [
             {
@@ -568,7 +568,7 @@ describe('Test orders service', () => {
           ordersService.dealMakerSudtAmount = BigInt(100000000)
 
           // @ts-ignore
-          const dealStruct = ordersService.generateDealStruct(
+          const dealStruct = ordersService.generateDeal(
             BigInt(1000),
             '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e903',
           )
@@ -632,7 +632,7 @@ describe('Test orders service', () => {
           })
         })
 
-        describe('when send tx unsuccessfully', async () => {
+        describe('when send tx unsuccessfully', () => {
           beforeEach(() => {
             mockSignAndSendTransaction.mockRejectedValue(undefined)
           })
@@ -683,18 +683,6 @@ describe('Test orders service', () => {
         expect(mockLogger.info).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: Order list is empty')
       })
 
-      describe('when orderService#startMatchAndReturnOutputs returns an empty array', () => {
-        beforeEach(() => {
-          mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-          jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
-          jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
-          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([])
-        })
-        it('should return false', async () => {
-          const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
-          expect(res).toBe(false)
-        })
-      })
       describe('when live cells is empty', () => {
         beforeEach(() => {
           mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
@@ -707,6 +695,26 @@ describe('Test orders service', () => {
           const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
           expect(res).toBe(false)
           expect(mockLogger.info).toBeCalledWith('\x1b[35m[Orders Service]\x1b[0m: No live cells')
+        })
+      })
+
+      describe('when orderService#startMatchAndReturnOutputs returns an empty array', () => {
+        beforeEach(() => {
+          mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+          jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
+          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([])
+          mockLoadCells.mockResolvedValue([
+            {
+              type: {
+                args: 'mock_sudt_args',
+              },
+            },
+          ])
+        })
+        it('should return false', async () => {
+          const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
+          expect(res).toBe(false)
         })
       })
 

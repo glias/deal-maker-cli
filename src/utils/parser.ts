@@ -61,3 +61,65 @@ export const formatOrderData = (currentSudtAmount: bigint, orderAmount: bigint, 
     2,
   )}${type}`
 }
+
+type Order = ReturnType<typeof parseOrderData> & { capacity: bigint }
+
+interface Orders {
+  miner: { capacity: bigint; sudtAmount: bigint }
+  orders: Array<Order>
+}
+export const parsePlaceOrderTx = (inputs: Orders, outputs: Orders) => {
+  const bidOrders = {
+    inputs: inputs.orders.filter(o => o.type === '00'),
+    outputs: outputs.orders.filter(o => o.type === '00'),
+  }
+  const askOrders = {
+    inputs: inputs.orders.filter(o => o.type === '01'),
+    outputs: outputs.orders.filter(o => o.type === '01'),
+  }
+
+  const formatLog = (input: Order, output: Order) => ({
+    'capacity:before': input.capacity,
+    'capacity:after': output.capacity,
+    'capacity:delta': output.capacity - input.capacity,
+    'sudt:before': input.sudtAmount,
+    'sudt:after': output.sudtAmount,
+    'sudt:delta': output.sudtAmount - input.sudtAmount,
+  })
+
+  const bidLogs = bidOrders.inputs.map((input, idx) => {
+    const output = bidOrders.outputs[idx]
+    return { name: `bid ${idx}`, ...formatLog(input, output) }
+  })
+  const askLogs = askOrders.inputs.map((input, idx) => {
+    const output = askOrders.outputs[idx]
+    return { name: `ask ${idx}`, ...formatLog(input, output) }
+  })
+
+  const minerLog = {
+    'name': 'miner',
+    'capacity:before': inputs.miner.capacity,
+    'capacity:after': outputs.miner.capacity,
+    'capacity:delta': outputs.miner.capacity - inputs.miner.capacity,
+    'sudt:before': inputs.miner.sudtAmount,
+    'sudt:after': outputs.miner.sudtAmount,
+    'sudt:delta': outputs.miner.sudtAmount - inputs.miner.sudtAmount,
+  }
+
+  const delta = {
+    capacity:
+      bidLogs.reduce((sum, b) => sum + b['capacity:delta'], BigInt(0)) +
+      askLogs.reduce((sum, a) => sum + a['capacity:delta'], BigInt(0)) +
+      minerLog['capacity:delta'],
+    sudt:
+      bidLogs.reduce((sum, b) => sum + b['sudt:delta'], BigInt(0)) +
+      askLogs.reduce((sum, a) => sum + a['sudt:delta'], BigInt(0)) +
+      minerLog['sudt:delta'],
+  }
+  return {
+    bidLogs,
+    askLogs,
+    minerLog,
+    delta,
+  }
+}
