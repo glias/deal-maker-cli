@@ -2,13 +2,16 @@ const mockLogger = { info: jest.fn(), warn: jest.fn() }
 const mockGetPrivateKey = jest.fn()
 const mockLoadCells = jest.fn()
 const mockSignAndSendTransaction = jest.fn()
+const mockGetMatchOrdersTx = jest.fn()
 
 jest.doMock('../../utils', () => ({
   ...jest.requireActual('../../utils'),
   logger: mockLogger,
   getPrivateKey: mockGetPrivateKey,
   signAndSendTransaction: mockSignAndSendTransaction,
+  getMatchOrdersTx: mockGetMatchOrdersTx,
 }))
+
 jest.doMock('@nervosnetwork/ckb-sdk-core/lib/loadCellsFromIndexer', () => mockLoadCells)
 
 import { Connection, createConnection } from 'typeorm'
@@ -153,12 +156,7 @@ describe('Test orders service', () => {
       jest.resetAllMocks()
     })
     describe('Match orders', () => {
-      const shannonsRatio = BigInt(100_000_000)
-      const dealMakerLock = {
-        args: '',
-        codeHash: '',
-        hashType: 'type',
-      }
+      const dealMakerLock = { args: '', codeHash: '', hashType: 'type' }
       const biggestCell = {
         blockHash: '',
         capacity: '0x0',
@@ -201,17 +199,19 @@ describe('Test orders service', () => {
       describe('Full match, One ask order One bid order', () => {
         it('return correct capacity and sudt amount', () => {
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([baseBidOrder], [baseAskOrder])
+          ordersService.matchOrders([baseBidOrder], [baseAskOrder])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual((BigInt(90000000000) * BigInt(3)) / BigInt(1000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(0))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(90000000000))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(0.3 * 10 * 10 ** 7))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(10_000_000_000))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(0))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(
+            (BigInt(90000000000) * BigInt(3)) / BigInt(1000),
+          )
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(0))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(90000000000))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(
+            BigInt(0.3 * 10 * 10 ** 7),
+          )
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(10_000_000_000))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(0))
         })
       })
 
@@ -241,19 +241,17 @@ describe('Test orders service', () => {
             )}"}`,
           }
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_2], [baseAskOrder])
+          ordersService.matchOrders([bidOrder_2], [baseAskOrder])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          const rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(270000000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(90000000000))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(30090000000))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(28421052))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(527894738))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(9473684210))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(2526315790))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(270000000))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(90000000000))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(30090000000))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(28421052))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(527894738))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(9473684210))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(2526315790))
         })
 
         it('return correct capacity and sudt amount when left ask order have cant match', () => {
@@ -271,19 +269,17 @@ describe('Test orders service', () => {
           }
 
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_2], [baseAskOrder, askOrder_2])
+          ordersService.matchOrders([bidOrder_2], [baseAskOrder, askOrder_2])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          const rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(270000000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(90000000000))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(30090000000))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(28421052))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(527894738))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(9473684210))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(2526315790))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(270000000))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(90000000000))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(30090000000))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(28421052))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(527894738))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(9473684210))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(2526315790))
         })
       })
 
@@ -324,19 +320,17 @@ describe('Test orders service', () => {
             )}"}`,
           }
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_3], [askOrder_3])
+          ordersService.matchOrders([bidOrder_3], [askOrder_3])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(142_500_000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(2507_500_000))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(475 * 10 ** 8))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(15_000_000))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(50 * 10 ** 8))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(8_024_000_000))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(695 * 10 ** 8))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(142_500_000))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(2507_500_000))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(475 * 10 ** 8))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(15_000_000))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(50 * 10 ** 8))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(8_024_000_000))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(695 * 10 ** 8))
         })
 
         it('return correct capacity and sudt amount when have bid order left but cant match', () => {
@@ -350,19 +344,17 @@ describe('Test orders service', () => {
             )}"}`,
           }
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_3, bidOrder_3_1], [askOrder_3])
+          ordersService.matchOrders([bidOrder_3, bidOrder_3_1], [askOrder_3])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(142_500_000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(2507_500_000))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(475 * 10 ** 8))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(15_000_000))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(50 * 10 ** 8))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(8_024_000_000))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(695 * 10 ** 8))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(142_500_000))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(2507_500_000))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(475 * 10 ** 8))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(15_000_000))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(50 * 10 ** 8))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(8_024_000_000))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(695 * 10 ** 8))
         })
       })
 
@@ -403,22 +395,20 @@ describe('Test orders service', () => {
 
         it('return correct capacity and sudt amount', () => {
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_4_1], [askOrder_4_1, askOrder_4_2])
+          ordersService.matchOrders([bidOrder_4_1], [askOrder_4_1, askOrder_4_2])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(660000000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(1200 * 10 ** 8))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(0))
-          expect(BigInt(rawTx.outputs[3].capacity)).toEqual(BigInt(1000 * 10 ** 8))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(66_000_000))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(220 * 10 ** 8))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[3]).sudtAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[3]).orderAmount).toEqual(BigInt(0))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(660000000))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(1200 * 10 ** 8))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(0))
+          expect(BigInt(ordersService.outputsCells[3].capacity)).toEqual(BigInt(1000 * 10 ** 8))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(66_000_000))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(220 * 10 ** 8))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[3]).sudtAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[3]).orderAmount).toEqual(BigInt(0))
         })
       })
 
@@ -459,22 +449,20 @@ describe('Test orders service', () => {
 
         it('return correct capacity and sudt amount', () => {
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_5_1], [askOrder_5_1, askOrder_5_2])
+          ordersService.matchOrders([bidOrder_5_1], [askOrder_5_1, askOrder_5_2])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(609000000))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(1080 * 10 ** 8))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(950 * 10 ** 8))
-          expect(BigInt(rawTx.outputs[3].capacity)).toEqual(BigInt(27051000000))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(63336032))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(633473685))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(257179488))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[3]).sudtAmount).toEqual(BigInt(21112010795))
-          expect(parseOrderData(rawTx.outputsData[3]).orderAmount).toEqual(BigInt(1887989205))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(609000000))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(1080 * 10 ** 8))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(950 * 10 ** 8))
+          expect(BigInt(ordersService.outputsCells[3].capacity)).toEqual(BigInt(27051000000))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(63336032))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(633473685))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(257179488))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[3]).sudtAmount).toEqual(BigInt(21112010795))
+          expect(parseOrderData(ordersService.outputsData[3]).orderAmount).toEqual(BigInt(1887989205))
         })
       })
 
@@ -515,22 +503,20 @@ describe('Test orders service', () => {
 
         it('return correct capacity and sudt amount', () => {
           // @ts-ignore
-          ordersService.startMatchAndReturnOutputs([bidOrder_6_1], [askOrder_6_1, askOrder_6_2])
+          ordersService.matchOrders([bidOrder_6_1], [askOrder_6_1, askOrder_6_2])
           // @ts-ignore
           ordersService.pushDealerMakerCellAndData(biggestCell, dealMakerLock)
-          // @ts-ignore
-          rawTx = ordersService.generateRawTx()
-          expect(BigInt(rawTx.outputs[0].capacity)).toEqual(BigInt(634973684))
-          expect(BigInt(rawTx.outputs[1].capacity)).toEqual(BigInt(1080 * 10 ** 8))
-          expect(BigInt(rawTx.outputs[2].capacity)).toEqual(BigInt(8367131573))
-          expect(BigInt(rawTx.outputs[3].capacity)).toEqual(BigInt(103657894743))
-          expect(BigInt('0x' + readBigUInt128LE(rawTx.outputsData[0].slice(2)))).toEqual(BigInt(65999999))
-          expect(parseOrderData(rawTx.outputsData[1]).sudtAmount).toEqual(BigInt(633473685))
-          expect(parseOrderData(rawTx.outputsData[1]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[2]).sudtAmount).toEqual(BigInt(220 * 10 ** 8))
-          expect(parseOrderData(rawTx.outputsData[2]).orderAmount).toEqual(BigInt(0))
-          expect(parseOrderData(rawTx.outputsData[3]).sudtAmount).toEqual(BigInt(2375526316))
-          expect(parseOrderData(rawTx.outputsData[3]).orderAmount).toEqual(BigInt(19842105257))
+          expect(BigInt(ordersService.outputsCells[0].capacity)).toEqual(BigInt(634973684))
+          expect(BigInt(ordersService.outputsCells[1].capacity)).toEqual(BigInt(1080 * 10 ** 8))
+          expect(BigInt(ordersService.outputsCells[2].capacity)).toEqual(BigInt(8367131573))
+          expect(BigInt(ordersService.outputsCells[3].capacity)).toEqual(BigInt(103657894743))
+          expect(BigInt('0x' + readBigUInt128LE(ordersService.outputsData[0].slice(2)))).toEqual(BigInt(65999999))
+          expect(parseOrderData(ordersService.outputsData[1]).sudtAmount).toEqual(BigInt(633473685))
+          expect(parseOrderData(ordersService.outputsData[1]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[2]).sudtAmount).toEqual(BigInt(220 * 10 ** 8))
+          expect(parseOrderData(ordersService.outputsData[2]).orderAmount).toEqual(BigInt(0))
+          expect(parseOrderData(ordersService.outputsData[3]).sudtAmount).toEqual(BigInt(2375526316))
+          expect(parseOrderData(ordersService.outputsData[3]).orderAmount).toEqual(BigInt(19842105257))
         })
       })
 
@@ -548,37 +534,8 @@ describe('Test orders service', () => {
 
         it('returns empty array', () => {
           // @ts-ignore
-          const outputCells = ordersService.startMatchAndReturnOutputs([baseBidOrder], [askOrder_7])
+          const outputCells = ordersService.matchOrders([baseBidOrder], [askOrder_7])
           expect(outputCells.length).toEqual(0)
-        })
-      })
-
-      describe('generateDeal', () => {
-        it('returns correct deal Struct', () => {
-          ordersService.inputCells = [
-            {
-              previousOutput: {
-                txHash: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
-                index: '0x0',
-              },
-              since: '0x0',
-            },
-          ]
-          ordersService.dealMakerCapacityAmount = BigInt(1000000000)
-          ordersService.dealMakerSudtAmount = BigInt(100000000)
-
-          // @ts-ignore
-          const dealStruct = ordersService.generateDeal(
-            BigInt(1000),
-            '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e903',
-          )
-          expect(dealStruct).toStrictEqual({
-            txHash: '',
-            tokenId: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e903',
-            orderIds: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902-0x0',
-            fee: '999999000-100000000',
-            status: DealStatus.Pending,
-          })
         })
       })
 
@@ -588,9 +545,9 @@ describe('Test orders service', () => {
           mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
           jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
           jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
-          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([1, 2])
+          jest.spyOn(ordersService, 'matchOrders' as any).mockReturnValue([1, 2])
           jest.spyOn(ordersService, 'pushDealerMakerCellAndData' as any).mockReturnValue(undefined)
-          jest.spyOn(ordersService, 'generateRawTx' as any).mockReturnValue({
+          mockGetMatchOrdersTx.mockReturnValue({
             version: '0x0',
             headerDeps: [],
             cellDeps: [],
@@ -601,18 +558,8 @@ describe('Test orders service', () => {
           })
           mockSaveDeal = jest.spyOn(ordersService, 'saveDeal').mockReturnValue(undefined)
           mockLoadCells.mockResolvedValue([
-            {
-              type: {
-                args: 'mock_sudt_args',
-              },
-              capacity: '0x10000000000',
-            },
-            {
-              type: {
-                args: 'mock_sudt_args',
-              },
-              capacity: '0x10000000001',
-            },
+            { type: { args: 'mock_sudt_args' }, capacity: '0x10000000000' },
+            { type: { args: 'mock_sudt_args' }, capacity: '0x10000000001' },
           ])
         })
         describe('when send tx successfully', () => {
@@ -640,11 +587,7 @@ describe('Test orders service', () => {
             const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
             expect(res).toBe(true)
             expect(mockSaveDeal).toBeCalledWith(
-              expect.objectContaining({
-                txHash: '',
-                tokenId: 'mock_sudt_args',
-                status: DealStatus.Failed,
-              }),
+              expect.objectContaining({ txHash: '', tokenId: 'mock_sudt_args', status: DealStatus.Failed }),
             )
           })
         })
@@ -688,7 +631,7 @@ describe('Test orders service', () => {
           mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
           jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
           jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
-          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([1, 2])
+          jest.spyOn(ordersService, 'matchOrders' as any).mockReturnValue([1, 2])
           mockLoadCells.mockResolvedValue([])
         })
         it('should return false', async () => {
@@ -698,19 +641,13 @@ describe('Test orders service', () => {
         })
       })
 
-      describe('when orderService#startMatchAndReturnOutputs returns an empty array', () => {
+      describe('when orderService#matchOrders returns an empty array', () => {
         beforeEach(() => {
           mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
           jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
           jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
-          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([])
-          mockLoadCells.mockResolvedValue([
-            {
-              type: {
-                args: 'mock_sudt_args',
-              },
-            },
-          ])
+          jest.spyOn(ordersService, 'matchOrders' as any).mockReturnValue([])
+          mockLoadCells.mockResolvedValue([{ type: { args: 'mock_sudt_args' } }])
         })
         it('should return false', async () => {
           const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')
@@ -723,14 +660,8 @@ describe('Test orders service', () => {
           mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
           jest.spyOn(ordersService, 'getBidOrders').mockResolvedValue([1, 2, 3] as any)
           jest.spyOn(ordersService, 'getAskOrders').mockResolvedValue([1, 2, 3] as any)
-          jest.spyOn(ordersService, 'startMatchAndReturnOutputs' as any).mockReturnValue([1, 2])
-          mockLoadCells.mockResolvedValue([
-            {
-              type: {
-                args: 'mock_invalid_sudt_type_args',
-              },
-            },
-          ])
+          jest.spyOn(ordersService, 'matchOrders' as any).mockReturnValue([1, 2])
+          mockLoadCells.mockResolvedValue([{ type: { args: 'mock_invalid_sudt_type_args' } }])
         })
         it('should return false', async () => {
           const res = await ordersService.prepareMatch('mock_sudt_args', mockIndexer, 'mock_key_file')

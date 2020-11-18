@@ -23,7 +23,8 @@ import {
   PRICE_RATIO,
   // parsePlaceOrderTx,
   readBigUInt128LE,
-  MATCH_ORDERS_CELL_DEPS,
+  getMatchOrdersTx,
+  getMatchedOrder,
 } from '../../utils'
 import { Deal, DealStatus } from './deal.entity'
 
@@ -47,14 +48,6 @@ class OrdersService {
   dealMakerCapacityAmount: bigint = BigInt(0)
   dealMakerSudtAmount: bigint = BigInt(0)
 
-  /*
-  This function is the entry for match engine.
-  Our workflow is get sorted order list from sync module.Then match them, generate raw
-  transaction, sign and send it.
-  In this function we do some check to ensure our matcher can successfully work.
-  Such as set private key; check order list is not empty; check deal maker have live cells etc.
-  Other sync order filter conditions are define in orders/order.repository.ts toCell function.
-  */
   public async prepareMatch(sudtTypeArgs: string, indexer: Indexer, keyFile: string | null): Promise<boolean> {
     const privateKey = getPrivateKey(keyFile ?? '')
 
@@ -74,8 +67,7 @@ class OrdersService {
     }
 
     /* check live cells and add deal maker cell */
-    const publicKey = privateKeyToPublicKey(privateKey)
-    const publicKeyHash = `0x${blake160(publicKey, 'hex')}`
+    const publicKeyHash = `0x${blake160(privateKeyToPublicKey(privateKey), 'hex')}`
     const dealMakerLock: CKBComponents.Script = { codeHash: SECP256K1_CODE_HASH, hashType: 'type', args: publicKeyHash }
 
     const liveCells = await loadCells({ indexer, CellCollector, lock: dealMakerLock })
@@ -93,18 +85,22 @@ class OrdersService {
     const dealMakerCell = dealMakerCells.sort((c1, c2) => Number(BigInt(c2.capacity) - BigInt(c1.capacity)))[0]
 
     // the core method
-    const outputs = this.startMatchAndReturnOutputs(bidOrderList, askOrderList)
+    const outputs = this.matchOrders(bidOrderList, askOrderList)
     if (!outputs.length) return false
 
     this.pushDealerMakerCellAndData(dealMakerCell, dealMakerLock)
 
-    const rawTx = this.generateRawTx()
+    const rawTx = getMatchOrdersTx(this.inputCells, this.outputsCells, this.witnesses, this.outputsData)
     const minerFee = BigInt(getTransactionSize(rawTx)) * FEE_RATIO
     rawTx.outputs[0].capacity = '0x' + (BigInt(rawTx.outputs[0].capacity) - minerFee).toString(16)
 
     this.outputsCells[0] = rawTx.outputs[0]
 
-    const dealRecord = this.generateDeal(minerFee, sudtTypeArgs)
+    const orderIds = this.inputCells
+      .map(input => `${input.previousOutput!.txHash}-${input.previousOutput!.index}`)
+      .join()
+    const fee = `${this.dealMakerCapacityAmount - minerFee}-${this.dealMakerSudtAmount}`
+    const dealRecord = { txHash: '', tokenId: sudtTypeArgs, orderIds, fee, status: DealStatus.Pending }
     const tx = { ...rawTx, outputs: this.outputsCells }
     // if (process.env.NODE_ENV === 'development') {
     //   const orderIds = tx.inputs.slice(1).map(input => `${input.previousOutput?.txHash}-${input.previousOutput?.index}`)
@@ -201,7 +197,7 @@ class OrdersService {
     return this.#dealRepository.getPendingDeals()
   }
 
-  private startMatchAndReturnOutputs(
+  private matchOrders(
     bidOrderList: Array<OrderDto>,
     askOrderList: Array<OrderDto>,
   ): Array<CKBComponents.CellOutput> | [] {
@@ -217,8 +213,6 @@ class OrdersService {
     const askOriginalScript = { lock: askOrderOutput.lock, type: askOrderOutput.type }
 
     if (askMatchOrder.price > bidMatchOrder.price) {
-      // If before we have matched some order and current order is partially matched, we need to add it to outputs.
-      // handle partially matched order
       let partialOrder:
         | (OrderDto & { capacity: string; data: string; lockScript: Record<'lock' | 'type', any> })
         | null = null
@@ -239,10 +233,7 @@ class OrdersService {
       }
       if (partialOrder) {
         this.pushInputCells(partialOrder.id, undefined)
-        this.pushOutputsCellAndData(
-          { capacity: partialOrder.capacity, data: partialOrder.data },
-          partialOrder.lockScript,
-        )
+        this.pushOutputsCellAndData({ ...partialOrder, ...partialOrder.lockScript })
       }
       return this.outputsCells
     }
@@ -258,86 +249,83 @@ class OrdersService {
     const askActualSpendSudtAmount = (askCapacityOrderAmount * SHANNONS_RATIO) / dealPrice
     const askOriginalCapacityAmount = BigInt(askOrderOutput.capacity)
 
-    /*
-    We transfer ask order's ckb order amount to actual spend sudt amount,
-    and then compare with bid order's sudt order amount to judge that it is full mtached or partially matched
-    */
+    const bidPrice = bidMatchOrder.price
+    const askPrice = askMatchOrder.price
+
     if (bidSudtOrderAmount === askActualSpendSudtAmount) {
-      // For done bid order, add order SUDT amount to current amount, and set order amount 0, then sub used capacity and fee.
-      const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
-        bidPrice: bidMatchOrder.price,
-        bidActualSpendCapacityAmount: bidActualSpendCapacityAmount,
-        bidSudtOrderAmount: bidSudtOrderAmount,
-        bidOriginalCapacityAmount: bidOriginalCapacityAmount,
-        bidSudtAmount: bidSudtAmount,
+      const { fee: feeForBid, ...bidDoneCapacityAndSudt } = getMatchedOrder('bid', {
+        price: bidPrice,
+        cost: bidActualSpendCapacityAmount,
+        amount: bidSudtOrderAmount,
+        spend: bidOriginalCapacityAmount,
+        base: bidSudtAmount,
       })
-      // Input cell, output cell, output data and witness need one to one correspondence
+      const { fee: feeForAsk, ...askDoneCapacityAndSudt } = getMatchedOrder('ask', {
+        price: askPrice,
+        cost: askActualSpendSudtAmount,
+        amount: askCapacityOrderAmount,
+        base: askOriginalCapacityAmount,
+        spend: askSudtAmount,
+      })
+      this.dealMakerCapacityAmount += feeForBid
+      this.dealMakerSudtAmount += feeForAsk
+
       this.pushInputCells(bidMatchOrder.id, bidMatchOrder.part)
-      this.pushOutputsCellAndData(bidDoneCapacityAndSudt, bidOriginalScript)
-      // It has been matched so remove it from order list
-      bidOrderList.shift()
-
-      // For done bid order, add order CKB amount to capacity, and set order amount 0, then sub used SUDT and fee.
-      const askDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneAskCapacityAndSudt({
-        askPrice: askMatchOrder.price,
-        askActualSpendSudtAmount: askActualSpendSudtAmount,
-        askCapacityOrderAmount: askCapacityOrderAmount,
-        askOriginalCapacityAmount: askOriginalCapacityAmount,
-        askSudtAmount: askSudtAmount,
-      })
       this.pushInputCells(askMatchOrder.id, askMatchOrder.part)
-      this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
-      askOrderList.shift()
-    } else if (bidSudtOrderAmount < askActualSpendSudtAmount) {
-      const bidDoneCapacityAndSudt: { capacity: string; data: string } = this.calDoneBidCapacityAndSudt({
-        bidPrice: bidMatchOrder.price,
-        bidActualSpendCapacityAmount: bidActualSpendCapacityAmount,
-        bidSudtOrderAmount: bidSudtOrderAmount,
-        bidOriginalCapacityAmount: bidOriginalCapacityAmount,
-        bidSudtAmount: bidSudtAmount,
-      })
-
-      this.pushInputCells(bidMatchOrder.id, undefined)
-      this.pushOutputsCellAndData(bidDoneCapacityAndSudt, bidOriginalScript)
+      this.pushOutputsCellAndData({ ...bidDoneCapacityAndSudt, ...bidOriginalScript })
+      this.pushOutputsCellAndData({ ...askDoneCapacityAndSudt, ...askOriginalScript })
       bidOrderList.shift()
+      askOrderList.shift()
+    }
 
-      // For partially matched ask order.Add matched CKB to current capacity, then sub order CKB amount and used SUDT and fee.
-      const askPartlyCapacityAndSudt: { capacity: string; data: string } = this.calPartlyAskCapacityAndSudt({
-        bidSudtOrderAmount: bidSudtOrderAmount,
-        bidActualSpendCapacityAmount: bidActualSpendCapacityAmount,
-        askOriginalCapacityAmount: askOriginalCapacityAmount,
-        askCapacityOrderAmount: askCapacityOrderAmount,
-        askSudtAmount: askSudtAmount,
-        askPrice: askMatchOrder.price,
+    if (bidSudtOrderAmount < askActualSpendSudtAmount) {
+      const { fee: feeForBid, ...bidDoneCapacityAndSudt } = getMatchedOrder('bid', {
+        price: bidPrice,
+        cost: bidActualSpendCapacityAmount,
+        amount: bidSudtOrderAmount,
+        spend: bidOriginalCapacityAmount,
+        base: bidSudtAmount,
       })
-      // Use after matched info to generate a new output
-      const newAskOutput: OrderDto = this.generateNewOutput(askMatchOrder, askPartlyCapacityAndSudt, askOriginalScript)
+      this.dealMakerCapacityAmount += feeForBid
+      const askPartlyCapacityAndSudt = this.calPartlyAskCapacityAndSudt({
+        askPrice,
+        bidSudtOrderAmount,
+        bidActualSpendCapacityAmount,
+        askOriginalCapacityAmount,
+        askCapacityOrderAmount,
+        askSudtAmount,
+      })
+      this.pushInputCells(bidMatchOrder.id, undefined)
+      this.pushOutputsCellAndData({ ...bidDoneCapacityAndSudt, ...bidOriginalScript })
 
-      // Remove current ask order, and put new one to ask order list for next matched
+      const newAskOutput: OrderDto = this.generateNewOutput(askMatchOrder, askPartlyCapacityAndSudt, askOriginalScript)
+      bidOrderList.shift()
       askOrderList[0] = newAskOutput
       askMatchOrder = askOrderList[0]
-    } else {
-      const askDoneCapacityAndSudt = this.calDoneAskCapacityAndSudt({
-        askPrice: askMatchOrder.price,
-        askActualSpendSudtAmount: askActualSpendSudtAmount,
-        askSudtAmount: askSudtAmount,
-        askOriginalCapacityAmount: askOriginalCapacityAmount,
-        askCapacityOrderAmount: askCapacityOrderAmount,
-      })
-      this.pushInputCells(askMatchOrder.id, undefined)
-      this.pushOutputsCellAndData(askDoneCapacityAndSudt, askOriginalScript)
-      askOrderList.shift()
+    }
 
-      // For partially matched bid order.Add matched order SUDT amount to current amount, then sub order amount and used capacity and fee.
-      const bidPartlyCapacityAndSudt = this.calPartlyBidCapacityAndSudt({
-        askCapacityOrderAmount: askCapacityOrderAmount,
-        bidOriginalCapacityAmount: bidOriginalCapacityAmount,
-        bidSudtOrderAmount: bidSudtOrderAmount,
-        askActualSpendSudtAmount: askActualSpendSudtAmount,
-        bidSudtAmount: bidSudtAmount,
-        bidPrice: bidMatchOrder.price,
+    if (bidSudtOrderAmount > askActualSpendSudtAmount) {
+      const { fee: feeForAsk, ...askDoneCapacityAndSudt } = getMatchedOrder('ask', {
+        price: askMatchOrder.price,
+        cost: askActualSpendSudtAmount,
+        spend: askSudtAmount,
+        base: askOriginalCapacityAmount,
+        amount: askCapacityOrderAmount,
       })
+      this.dealMakerSudtAmount += feeForAsk
+      const bidPartlyCapacityAndSudt = this.calPartlyBidCapacityAndSudt({
+        bidPrice: bidMatchOrder.price,
+        askCapacityOrderAmount,
+        bidOriginalCapacityAmount,
+        bidSudtOrderAmount,
+        askActualSpendSudtAmount,
+        bidSudtAmount,
+      })
+      this.pushInputCells(askMatchOrder.id)
+      this.pushOutputsCellAndData({ ...askDoneCapacityAndSudt, ...askOriginalScript })
+
       const newBidOutput: OrderDto = this.generateNewOutput(bidMatchOrder, bidPartlyCapacityAndSudt, bidOriginalScript)
+      askOrderList.shift()
       bidOrderList[0] = newBidOutput
       bidMatchOrder = bidOrderList[0]
     }
@@ -359,12 +347,11 @@ class OrdersService {
       return this.outputsCells
     }
 
-    // recursive match function
-    return this.startMatchAndReturnOutputs(bidOrderList, askOrderList)
+    return this.matchOrders(bidOrderList, askOrderList)
   }
 
-  private pushInputCells(inputId: string, part: undefined | boolean) {
-    if (part === undefined) {
+  private pushInputCells(inputId: string, part?: boolean) {
+    if (!part) {
       const previousInput: CKBComponents.CellInput = {
         previousOutput: { txHash: inputId.split('-')[0], index: inputId.split('-')[1] },
         since: '0x0',
@@ -374,67 +361,23 @@ class OrdersService {
     }
   }
 
-  private calDoneBidCapacityAndSudt(args: {
-    bidPrice: bigint
-    bidActualSpendCapacityAmount: bigint
-    bidOriginalCapacityAmount: bigint
-    bidSudtAmount: bigint
-    bidSudtOrderAmount: bigint
+  private pushOutputsCellAndData({
+    capacity,
+    data,
+    lock,
+    type,
+  }: {
+    capacity: string
+    data: string
+    lock: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
+    type: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
   }) {
-    const bidMinerFeeCapacityAmount: bigint = (args.bidActualSpendCapacityAmount * FEE) / FEE_RATIO
-    const afterMatchBidCapacity: bigint =
-      args.bidOriginalCapacityAmount - args.bidActualSpendCapacityAmount - bidMinerFeeCapacityAmount
-    const afterMatchBidSudtAmount: bigint = args.bidSudtAmount + args.bidSudtOrderAmount
-    this.dealMakerCapacityAmount += bidMinerFeeCapacityAmount
-
-    return {
-      capacity: `0x${afterMatchBidCapacity.toString(16)}`,
-      data: formatOrderData(afterMatchBidSudtAmount, BigInt('0'), args.bidPrice, '00'),
-    }
-  }
-
-  private calDoneAskCapacityAndSudt(args: {
-    askPrice: bigint
-    askActualSpendSudtAmount: bigint
-    askSudtAmount: bigint
-    askOriginalCapacityAmount: bigint
-    askCapacityOrderAmount: bigint
-  }) {
-    const askMinerFeeSudtAmount: bigint = (args.askActualSpendSudtAmount * FEE) / FEE_RATIO
-    const afterMatchAskSudtAmount: bigint = args.askSudtAmount - args.askActualSpendSudtAmount - askMinerFeeSudtAmount
-    const afterMatchAskCapacity = args.askOriginalCapacityAmount + args.askCapacityOrderAmount
-    this.dealMakerSudtAmount += askMinerFeeSudtAmount
-
-    return {
-      capacity: `0x${afterMatchAskCapacity.toString(16)}`,
-      data: formatOrderData(afterMatchAskSudtAmount, BigInt('0'), args.askPrice, '01'),
-    }
-  }
-
-  private pushOutputsCellAndData(
-    capacityAndSudt: Record<'capacity' | 'data', string>,
-    originalScript: Record<
-      'lock' | 'type',
-      { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
-    >,
-  ) {
-    const newOutputCell = {
-      ...{ capacity: capacityAndSudt.capacity },
-      ...{
-        lock: {
-          codeHash: originalScript.lock.code_hash,
-          hashType: originalScript.lock.hash_type,
-          args: originalScript.lock.args,
-        },
-        type: {
-          codeHash: originalScript.type.code_hash,
-          hashType: originalScript.type.hash_type,
-          args: originalScript.type.args,
-        },
-      },
-    }
-    this.outputsCells.push(newOutputCell)
-    this.outputsData.push(capacityAndSudt.data)
+    this.outputsCells.push({
+      capacity,
+      lock: { codeHash: lock.code_hash, hashType: lock.hash_type, args: lock.args },
+      type: { codeHash: type.code_hash, hashType: type.hash_type, args: type.args },
+    })
+    this.outputsData.push(data)
   }
 
   private generateNewOutput(
@@ -442,102 +385,82 @@ class OrdersService {
     capacityAndSudt: Record<'capacity' | 'data', string>,
     originalScript: Record<'lock' | 'type', object>,
   ) {
-    return {
-      ...originalOrderCell,
-      output: JSON.stringify({ ...capacityAndSudt, ...originalScript }),
-      part: true,
-    }
+    return { ...originalOrderCell, output: JSON.stringify({ ...capacityAndSudt, ...originalScript }), part: true }
   }
 
-  private calPartlyBidCapacityAndSudt(args: {
-    askCapacityOrderAmount: bigint
-    bidOriginalCapacityAmount: bigint
-    bidSudtOrderAmount: bigint
-    askActualSpendSudtAmount: bigint
-    bidSudtAmount: bigint
-    bidPrice: bigint
-  }) {
-    const bidMinerFeeCapacityAmount: bigint = (args.askCapacityOrderAmount * FEE) / FEE_RATIO
-    const afterPartMatchBidCapacity =
-      args.bidOriginalCapacityAmount - args.askCapacityOrderAmount - bidMinerFeeCapacityAmount
-    const afterPartMatchBidSudtOrderAmount = args.bidSudtOrderAmount - args.askActualSpendSudtAmount
-    const afterPartMatchBidSudtAmount = args.bidSudtAmount + args.askActualSpendSudtAmount
+  private calPartlyBidCapacityAndSudt({
+    askCapacityOrderAmount,
+    bidOriginalCapacityAmount,
+    bidSudtAmount,
+    bidSudtOrderAmount,
+    askActualSpendSudtAmount,
+    bidPrice,
+  }: Record<
+    | 'askCapacityOrderAmount'
+    | 'bidOriginalCapacityAmount'
+    | 'bidSudtOrderAmount'
+    | 'askActualSpendSudtAmount'
+    | 'bidSudtAmount'
+    | 'bidPrice',
+    bigint
+  >) {
+    const bidMinerFeeCapacityAmount = (askCapacityOrderAmount * FEE) / FEE_RATIO
+    const afterPartMatchBidCapacity = bidOriginalCapacityAmount - askCapacityOrderAmount - bidMinerFeeCapacityAmount
+    const afterPartMatchBidSudtOrderAmount = bidSudtOrderAmount - askActualSpendSudtAmount
+    const afterPartMatchBidSudtAmount = bidSudtAmount + askActualSpendSudtAmount
     this.dealMakerCapacityAmount += bidMinerFeeCapacityAmount
 
     return {
-      capacity: '0x' + afterPartMatchBidCapacity.toString(16),
-      data: formatOrderData(afterPartMatchBidSudtAmount, afterPartMatchBidSudtOrderAmount, args.bidPrice, '00'),
+      capacity: `0x${afterPartMatchBidCapacity.toString(16)}`,
+      data: formatOrderData(afterPartMatchBidSudtAmount, afterPartMatchBidSudtOrderAmount, bidPrice, '00'),
     }
   }
 
-  private calPartlyAskCapacityAndSudt(args: {
-    bidSudtOrderAmount: bigint
-    bidActualSpendCapacityAmount: bigint
-    askOriginalCapacityAmount: bigint
-    askCapacityOrderAmount: bigint
-    askSudtAmount: bigint
-    askPrice: bigint
-  }) {
-    const askMinerFeeSudtAmount: bigint = (args.bidSudtOrderAmount * FEE) / FEE_RATIO
-    const afterPartMatchCapacityOrderAmount = args.askCapacityOrderAmount - args.bidActualSpendCapacityAmount
-    const afterPartMatchAskSudtAmount = args.askSudtAmount - args.bidSudtOrderAmount - askMinerFeeSudtAmount
-    const afterPartMatchAskCapacityAmount = args.askOriginalCapacityAmount + args.bidActualSpendCapacityAmount
+  private calPartlyAskCapacityAndSudt({
+    bidSudtOrderAmount,
+    askCapacityOrderAmount,
+    bidActualSpendCapacityAmount,
+    askSudtAmount,
+    askOriginalCapacityAmount,
+    askPrice,
+  }: Record<
+    | 'bidSudtOrderAmount'
+    | 'bidActualSpendCapacityAmount'
+    | 'askOriginalCapacityAmount'
+    | 'askCapacityOrderAmount'
+    | 'askSudtAmount'
+    | 'askPrice',
+    bigint
+  >) {
+    const askMinerFeeSudtAmount = (bidSudtOrderAmount * FEE) / FEE_RATIO
+    const afterPartMatchCapacityOrderAmount = askCapacityOrderAmount - bidActualSpendCapacityAmount
+    const afterPartMatchAskSudtAmount = askSudtAmount - bidSudtOrderAmount - askMinerFeeSudtAmount
+    const afterPartMatchAskCapacityAmount = askOriginalCapacityAmount + bidActualSpendCapacityAmount
     this.dealMakerSudtAmount += askMinerFeeSudtAmount
 
     return {
-      capacity: '0x' + afterPartMatchAskCapacityAmount.toString(16),
-      data: formatOrderData(afterPartMatchAskSudtAmount, afterPartMatchCapacityOrderAmount, args.askPrice, '01'),
+      capacity: `0x${afterPartMatchAskCapacityAmount.toString(16)}`,
+      data: formatOrderData(afterPartMatchAskSudtAmount, afterPartMatchCapacityOrderAmount, askPrice, '01'),
     }
   }
 
   private stopMatchAndReturnOutputs(order: OrderDto) {
-    const { lock, type, capacity, data } = JSON.parse(order.output)
-    this.pushInputCells(order.id, undefined)
-    this.pushOutputsCellAndData({ capacity, data }, { lock, type })
+    const parsedOutput = JSON.parse(order.output)
+    this.pushInputCells(order.id)
+    this.pushOutputsCellAndData(parsedOutput)
     return this.outputsCells
   }
 
   // Generate dealmaker's fee cell
   private pushDealerMakerCellAndData(cell: RawTransactionParams.Cell, lock: CKBComponents.Script) {
     this.inputCells.unshift({ previousOutput: cell.outPoint!, since: '0x0' })
-    this.witnesses.unshift({
-      lock: '',
-      inputType: '',
-      outputType: '',
-    })
+    this.witnesses.unshift({ lock: '', inputType: '', outputType: '' })
     const newCapacity = this.dealMakerCapacityAmount + BigInt(cell.capacity)
     const newSudt =
       this.dealMakerSudtAmount + (cell.data ? BigInt('0x' + readBigUInt128LE(cell.data.slice(2))) : BigInt(0))
-
-    const dealMakerCell: CKBComponents.CellOutput = {
-      capacity: '0x' + newCapacity.toString(16),
-      lock,
-      type: this.outputsCells[0].type, // should check this
-    }
+    const dealMakerCell: CKBComponents.CellOutput = { capacity: `0x${newCapacity.toString(16)}`, lock, type: cell.type }
     this.outputsCells.unshift(dealMakerCell)
     this.outputsData.unshift(`0x${bigIntToUint128Le(newSudt)}`)
-  }
-
-  private generateRawTx() {
-    const rawTransaction: CKBComponents.RawTransactionToSign = {
-      version: '0x0',
-      headerDeps: [],
-      cellDeps: MATCH_ORDERS_CELL_DEPS,
-      inputs: this.inputCells,
-      witnesses: this.witnesses,
-      outputs: this.outputsCells,
-      outputsData: this.outputsData,
-    }
-
-    return rawTransaction
-  }
-
-  private generateDeal(minerFee: bigint, tokenId: string) {
-    const orderIds = this.inputCells
-      .map(input => `${input.previousOutput!.txHash}-${input.previousOutput!.index}`)
-      .join()
-    const fee = `${this.dealMakerCapacityAmount - minerFee}-${this.dealMakerSudtAmount}`
-    return { txHash: '', tokenId, orderIds, fee, status: DealStatus.Pending }
   }
 
   private clearGlobalVariables() {
