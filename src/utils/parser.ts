@@ -14,11 +14,13 @@ export const readBigUInt128LE = (rawHexString: string) => {
   return buf.reverse().toString('hex')
 }
 
-export const parseOrderData = (data: string) => {
+export const parseOrderData = (
+  data: string,
+): Record<'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: '00' | '01' } => {
   const sudtAmount = data.slice(2, 34)
   const orderAmount = data.slice(34, 66)
   const price = data.slice(66, 82)
-  const type = data.slice(82, 84)
+  const type = data.slice(82, 84) as '00' | '01'
   return {
     sudtAmount: BigInt('0x' + readBigUInt128LE(sudtAmount)),
     orderAmount: BigInt('0x' + readBigUInt128LE(orderAmount)),
