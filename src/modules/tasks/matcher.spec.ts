@@ -1,7 +1,7 @@
-import Matcher from '.'
-import type { OrderDto } from '../modules/orders/order.dto'
-import { OrderType } from '../modules/orders/order.entity'
-import { formatOrderData, parseOrderData, readBigUInt128LE } from '../utils'
+import Matcher from './matcher'
+import type { OrderDto } from '../orders/order.dto'
+import { OrderType } from '../orders/order.entity'
+import { formatOrderData, MATCH_ORDERS_CELL_DEPS } from '../../utils'
 
 describe('Test Match', () => {
   const dealMakerCell: RawTransactionParams.Cell = {
@@ -441,20 +441,7 @@ describe('Test Match', () => {
       expect(matcher.rawTx).toEqual({
         version: '0x0',
         headerDeps: [],
-        cellDeps: [
-          {
-            outPoint: { txHash: '0xbf8264248a7c15820f343a356bb1d01379d42e1eb0305ab5b07ef14b566de41f', index: '0x0' },
-            depType: 'code',
-          },
-          {
-            outPoint: { txHash: '0x52de48281937105168438931d52d864376c0f8d372cbee6f94f4d49550ae7ccd', index: '0x0' },
-            depType: 'code',
-          },
-          {
-            outPoint: { txHash: '0xace5ea83c478bb866edf122ff862085789158f5cbff155b7bb5f13058555b708', index: '0x0' },
-            depType: 'depGroup',
-          },
-        ],
+        cellDeps: MATCH_ORDERS_CELL_DEPS,
         inputs: [
           { previousOutput: { txHash: '0x0', index: '0x0' }, since: '0x0' },
           {

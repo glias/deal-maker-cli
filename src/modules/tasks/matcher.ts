@@ -1,6 +1,6 @@
 import { getTransactionSize } from '@nervosnetwork/ckb-sdk-utils'
-import { OrderDto } from '../modules/orders/order.dto'
-import { OrderType } from '../modules/orders/order.entity'
+import { OrderDto } from '../orders/order.dto'
+import { OrderType } from '../orders/order.entity'
 import {
   parseOrderData,
   formatOrderData,
@@ -11,7 +11,7 @@ import {
   PRICE_RATIO,
   MATCH_ORDERS_CELL_DEPS,
   bigIntToUint128Le,
-} from '../utils'
+} from '../../utils'
 
 interface MatchedOrder {
   id: string
@@ -26,6 +26,7 @@ export default class {
   dealMakerCapacityAmount: bigint = BigInt(0)
   dealMakerSudtAmount: bigint = BigInt(0)
   dealMakerCell: RawTransactionParams.Cell
+  minerFee = BigInt(0)
   get rawTx(): CKBComponents.RawTransactionToSign | null {
     if (!this.matchedOrderList.length) {
       return null
@@ -70,8 +71,8 @@ export default class {
       outputs: [dealMakerCell.output, ...outputs],
       outputsData: [dealMakerCell.data, ...outputsData],
     }
-    const minerFee = BigInt(getTransactionSize(rawTx)) * FEE_RATIO
-    rawTx.outputs[0].capacity = `0x${(dealMaker.capacity - minerFee).toString(16)}`
+    this.minerFee = BigInt(getTransactionSize(rawTx)) * FEE_RATIO
+    rawTx.outputs[0].capacity = `0x${(dealMaker.capacity - this.minerFee).toString(16)}`
     return rawTx
   }
 
@@ -146,7 +147,7 @@ export default class {
     }
 
     if (bidSudtOrderAmount < askData.cost) {
-      this.handleFullMatchedOrder({ ...bidMatchOrder, part: undefined, scripts: bidOriginalScript }, bidData)
+      this.handleFullMatchedOrder({ ...bidMatchOrder, scripts: bidOriginalScript }, bidData)
       const askPartlyCapacityAndSudt = this.calPartlyAskCapacityAndSudt({
         askPrice: askData.price,
         bidSudtOrderAmount,
@@ -317,10 +318,10 @@ export default class {
   handleFullMatchedOrder = (
     {
       id,
-      part,
+      // part,
       type,
       scripts,
-    }: Pick<OrderDto, 'id' | 'part' | 'type'> & { scripts: Record<'lock' | 'type', CKBComponents.Script> },
+    }: Pick<OrderDto, 'id' | 'type'> & { scripts: Record<'lock' | 'type', CKBComponents.Script> },
     { cost, spend, amount, base, price }: Record<'price' | 'cost' | 'spend' | 'base' | 'amount', bigint>,
   ) => {
     const fee = (cost * FEE) / FEE_RATIO
