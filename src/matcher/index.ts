@@ -1,6 +1,17 @@
+import { getTransactionSize } from '@nervosnetwork/ckb-sdk-utils'
 import { OrderDto } from '../modules/orders/order.dto'
 import { OrderType } from '../modules/orders/order.entity'
-import { parseOrderData, formatOrderData, FEE, FEE_RATIO, SHANNONS_RATIO, PRICE_RATIO } from '../utils'
+import {
+  parseOrderData,
+  formatOrderData,
+  readBigUInt128LE,
+  FEE,
+  FEE_RATIO,
+  SHANNONS_RATIO,
+  PRICE_RATIO,
+  MATCH_ORDERS_CELL_DEPS,
+  bigIntToUint128Le,
+} from '../utils'
 
 interface MatchedOrder {
   id: string
@@ -9,13 +20,60 @@ interface MatchedOrder {
 }
 
 export default class {
-  inputCells: Array<CKBComponents.CellInput> = []
   matchedOrderList: Array<MatchedOrder> = []
   bidOrderList: OrderDto[]
   askOrderList: OrderDto[]
   dealMakerCapacityAmount: bigint = BigInt(0)
   dealMakerSudtAmount: bigint = BigInt(0)
   dealMakerCell: RawTransactionParams.Cell
+  get rawTx(): CKBComponents.RawTransactionToSign | null {
+    if (!this.matchedOrderList.length) {
+      return null
+    }
+
+    const inputs: CKBComponents.CellInput[] = []
+    const outputs: CKBComponents.CellOutput[] = []
+    const outputsData: string[] = []
+    this.matchedOrderList.forEach(o => {
+      outputs.push({
+        capacity: `0x${o.info.capacity.toString(16)}`,
+        ...o.scripts,
+      })
+      outputsData.push(formatOrderData(o.info.sudtAmount, o.info.orderAmount, o.info.price, o.info.type))
+      const [txHash, index] = o.id.split('-')
+      if (!inputs.find(i => i.previousOutput?.txHash === txHash && i.previousOutput.index === index)) {
+        inputs.push({ previousOutput: { txHash, index }, since: '0x0' })
+      }
+    })
+    const dealMaker = {
+      capacity: BigInt(this.dealMakerCell.capacity) + this.dealMakerCapacityAmount,
+      sudt:
+        this.dealMakerSudtAmount +
+        (this.dealMakerCell.data ? BigInt('0x' + readBigUInt128LE(this.dealMakerCell.data.slice(2))) : BigInt(0)),
+    }
+    const dealMakerCell = {
+      input: { previousOutput: this.dealMakerCell.outPoint, since: '0x0' },
+      witness: { lock: '', inputType: '', outputType: '' },
+      output: {
+        capacity: `0x${dealMaker.capacity.toString(16)}`,
+        lock: this.dealMakerCell.lock,
+        type: this.dealMakerCell.type,
+      },
+      data: `0x${bigIntToUint128Le(dealMaker.sudt)}`,
+    }
+    const rawTx = {
+      version: '0x0',
+      headerDeps: [],
+      cellDeps: MATCH_ORDERS_CELL_DEPS,
+      inputs: [dealMakerCell.input, ...inputs],
+      witnesses: [dealMakerCell.witness, ...new Array(this.matchedOrderList.length).fill('0x')],
+      outputs: [dealMakerCell.output, ...outputs],
+      outputsData: [dealMakerCell.data, ...outputsData],
+    }
+    const minerFee = BigInt(getTransactionSize(rawTx)) * FEE_RATIO
+    rawTx.outputs[0].capacity = `0x${(dealMaker.capacity - minerFee).toString(16)}`
+    return rawTx
+  }
 
   constructor(bidOrderList: OrderDto[], askOrderList: OrderDto[], dealMakerCell: RawTransactionParams.Cell) {
     this.bidOrderList = bidOrderList
@@ -54,10 +112,6 @@ export default class {
       }
       if (partialOrder) {
         this.pushCell({
-          // id: partialOrder.id,
-          // lock: partialOrder.lock,
-          // type: partialOrder.type,
-          // part: partialOrder.part,
           ...partialOrder,
           info: { ...parseOrderData(partialOrder.data), capacity: BigInt(partialOrder.capacity) },
         })
@@ -145,30 +199,30 @@ export default class {
 
   pushCell = ({
     id,
-    part,
+    // part,
     lock,
     type,
     info,
   }: {
     id: string
-    part?: boolean
-    lock: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
-    type: { code_hash: string; hash_type: CKBComponents.ScriptHashType; args: string }
+    // part?: boolean
+    lock: CKBComponents.Script
+    type: CKBComponents.Script
     info: ReturnType<typeof parseOrderData> & { capacity: bigint }
   }) => {
-    if (!part) {
-      const [txHash, index] = id.split('-')
-      const previousInput: CKBComponents.CellInput = {
-        previousOutput: { txHash, index },
-        since: '0x0',
-      }
-      this.inputCells.push(previousInput)
-    }
+    // if (!part) {
+    //   const [txHash, index] = id.split('-')
+    //   const previousInput: CKBComponents.CellInput = {
+    //     previousOutput: { txHash, index },
+    //     since: '0x0',
+    //   }
+    //   this.inputCells.push(previousInput)
+    // }
     this.matchedOrderList.push({
       id,
       scripts: {
-        lock: { codeHash: lock.code_hash, hashType: lock.hash_type, args: lock.args },
-        type: { codeHash: type.code_hash, hashType: type.hash_type, args: type.args },
+        lock,
+        type,
       },
       info,
     })
@@ -261,7 +315,12 @@ export default class {
   //   this.outputsData.unshift(`0x${bigIntToUint128Le(newSudt)}`)
   // }
   handleFullMatchedOrder = (
-    { id, part, type, scripts }: Pick<OrderDto, 'id' | 'part' | 'type'> & { scripts: any },
+    {
+      id,
+      part,
+      type,
+      scripts,
+    }: Pick<OrderDto, 'id' | 'part' | 'type'> & { scripts: Record<'lock' | 'type', CKBComponents.Script> },
     { cost, spend, amount, base, price }: Record<'price' | 'cost' | 'spend' | 'base' | 'amount', bigint>,
   ) => {
     const fee = (cost * FEE) / FEE_RATIO
@@ -271,7 +330,7 @@ export default class {
       this.dealMakerCapacityAmount += fee
       this.pushCell({
         id,
-        part,
+        // part,
         ...scripts,
         info: {
           sudtAmount: final,
@@ -286,7 +345,7 @@ export default class {
       this.dealMakerSudtAmount += fee
       this.pushCell({
         id,
-        part,
+        // part,
         ...scripts,
         info: {
           sudtAmount: remain,

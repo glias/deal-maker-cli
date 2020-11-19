@@ -4,19 +4,18 @@ import { OrderType } from '../modules/orders/order.entity'
 import { formatOrderData, parseOrderData, readBigUInt128LE } from '../utils'
 
 describe('Test Match', () => {
+  const dealMakerCell: RawTransactionParams.Cell = {
+    data: '',
+    lock: { codeHash: '0x', hashType: 'data', args: '0x' },
+    type: { codeHash: '0x', hashType: 'data', args: '0x' },
+    capacity: '0x0',
+    outPoint: { txHash: '0x0', index: '0x0' },
+  }
   afterEach(() => {
     jest.resetAllMocks()
   })
 
   describe('Match orders', () => {
-    const dealMakerLock = { args: '', codeHash: '', hashType: 'type' }
-    const dealMakerCell: RawTransactionParams.Cell = {
-      data: '0x',
-      lock: { codeHash: '0x', hashType: 'data', args: '0x' },
-      type: { codeHash: '0x', hashType: 'data', args: '0x' },
-      capacity: '0x',
-      outPoint: { txHash: '0x0', index: '0x0' },
-    }
     const baseBidOrder: OrderDto = {
       id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
       tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
@@ -33,7 +32,7 @@ describe('Test Match', () => {
       )}"}`,
     }
     const baseAskOrder: OrderDto = {
-      id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+      id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
       tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
       type: OrderType.Ask,
       price: BigInt(90_000_000_000),
@@ -380,6 +379,138 @@ describe('Test Match', () => {
 
         expect(Number(matcher.dealMakerSudtAmount)).toBe(0)
         expect(Number(matcher.dealMakerCapacityAmount)).toBe(0)
+      })
+    })
+  })
+
+  describe('Transaction', () => {
+    it('should return null is no matched orders', () => {
+      const matcher = new Matcher([], [], dealMakerCell)
+      expect(matcher.rawTx).toBeNull()
+    })
+    it('should return tx when orders matched', () => {
+      const matcher = new Matcher([], [], dealMakerCell)
+      matcher.dealMakerCell = dealMakerCell
+      matcher.matchedOrderList = [
+        {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+          scripts: {
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          info: {
+            sudtAmount: BigInt(10000000000),
+            orderAmount: BigInt(0),
+            price: BigInt(90000000000),
+            capacity: BigInt(0),
+            type: '00',
+          },
+        },
+        {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
+          scripts: {
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0xffffffffffffffffffffffffffffffffffffffff',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          info: {
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(0),
+            price: BigInt(90000000000),
+            capacity: BigInt(90000000000),
+            type: '01',
+          },
+        },
+      ]
+      matcher.dealMakerCapacityAmount = BigInt(100000000)
+      expect(matcher.rawTx).toEqual({
+        version: '0x0',
+        headerDeps: [],
+        cellDeps: [
+          {
+            outPoint: { txHash: '0xbf8264248a7c15820f343a356bb1d01379d42e1eb0305ab5b07ef14b566de41f', index: '0x0' },
+            depType: 'code',
+          },
+          {
+            outPoint: { txHash: '0x52de48281937105168438931d52d864376c0f8d372cbee6f94f4d49550ae7ccd', index: '0x0' },
+            depType: 'code',
+          },
+          {
+            outPoint: { txHash: '0xace5ea83c478bb866edf122ff862085789158f5cbff155b7bb5f13058555b708', index: '0x0' },
+            depType: 'depGroup',
+          },
+        ],
+        inputs: [
+          { previousOutput: { txHash: '0x0', index: '0x0' }, since: '0x0' },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x0',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x2',
+            },
+            since: '0x0',
+          },
+        ],
+        witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x'],
+        outputs: [
+          {
+            capacity: '0x5e85440',
+            lock: { codeHash: '0x', hashType: 'data', args: '0x' },
+            type: { codeHash: '0x', hashType: 'data', args: '0x' },
+          },
+          {
+            capacity: '0x0',
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x14f46b0400',
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0xffffffffffffffffffffffffffffffffffffffff',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+        ],
+        outputsData: [
+          '0x00000000000000000000000000000000',
+          '0x00e40b540200000000000000000000000000000000000000000000000000000000046bf41400000000',
+          '0x000000000000000000000000000000000000000000000000000000000000000000046bf41400000001',
+        ],
       })
     })
   })

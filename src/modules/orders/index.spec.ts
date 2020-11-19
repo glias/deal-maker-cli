@@ -15,6 +15,7 @@ jest.doMock('../../utils', () => ({
 jest.doMock('@nervosnetwork/ckb-sdk-core/lib/loadCellsFromIndexer', () => mockLoadCells)
 
 import { Connection, createConnection } from 'typeorm'
+import rpcFormatter from '@nervosnetwork/ckb-sdk-rpc/lib/resultFormatter'
 import OrdersService from '.'
 import DealRepository from './deal.repository'
 import { DealStatus } from './deal.entity'
@@ -56,7 +57,13 @@ describe('Test orders service', () => {
         blockNumber: +cellToSave.block_number,
         price: BigInt(50000000000).toString(16).padStart(16, '0'),
         type: OrderType.Ask,
-        output: JSON.stringify({ ...cellToSave.cell_output, data: cellToSave.data }),
+        output: JSON.stringify({
+          ...cellToSave.cell_output,
+          capacity: cellToSave.cell_output.capacity,
+          data: cellToSave.data,
+          lock: rpcFormatter.toScript(cellToSave.cell_output.lock),
+          type: cellToSave.cell_output.type && rpcFormatter.toScript(cellToSave.cell_output.type),
+        }),
       })
     })
     it('should remove order', async () => {
@@ -185,7 +192,7 @@ describe('Test orders service', () => {
       const baseAskOrder: OrderDto = {
         id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
         tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-        type: OrderType.Bid,
+        type: OrderType.Ask,
         price: BigInt(90_000_000_000),
         blockNumber: 55,
         output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(

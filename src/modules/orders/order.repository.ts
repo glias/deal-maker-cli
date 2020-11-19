@@ -1,5 +1,6 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository, Not, In } from 'typeorm'
+import rpcResultFormatter from '@nervosnetwork/ckb-sdk-rpc/lib/resultFormatter'
 import { parseOrderCell, SUDT_TYPE_ARGS_LIST, FEE, FEE_RATIO, SHANNONS_RATIO, PRICE_RATIO } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
@@ -52,7 +53,11 @@ class OrderRepository extends Repository<Order> {
       ? null
       : this.create({
           ...cell,
-          output: JSON.stringify(cell.output),
+          output: JSON.stringify({
+            ...cell.output,
+            lock: rpcResultFormatter.toScript(cell.output.lock),
+            type: cell.output.type && rpcResultFormatter.toScript(cell.output.type),
+          }),
           type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
           price: cell.price.toString(16).padStart(16, '0'),
         })

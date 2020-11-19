@@ -102,7 +102,7 @@ describe('Test order repository', () => {
         const res = await orderRepository.saveOrder(order)
       })
       it('order with invalid order type', async () => {
-        const order = { ...askOrderWithLowerPrice, type: '02' }
+        const order = { ...askOrderWithLowerPrice, type: '02' as any }
         const res = await orderRepository.saveOrder(order)
       })
     })
