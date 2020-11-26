@@ -125,7 +125,7 @@ export const orderWithWrongType: Order = {
   id: 'id_order_with_zero_amount',
   tokenId: 'token_id_order_with_zero_amount',
   blockNumber: 2,
-  type: '02',
+  type: '02' as any,
   price: BigInt(100),
   orderAmount: BigInt('1000'),
   sudtAmount: BigInt('1000'),
