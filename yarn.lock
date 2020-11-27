@@ -560,6 +560,15 @@
     axios "0.19.2"
     tslib "2.0.1"
 
+"@nervosnetwork/ckb-sdk-rpc@0.38.1":
+  version "0.38.1"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-rpc/-/ckb-sdk-rpc-0.38.1.tgz#b66e3751e05d2413d30c621f27a6e53ec7629381"
+  integrity sha512-Cb/QPM6/mUoEHpgdlsJe0ofSyDTiGbZivSlwl5yYvLsY59dVhEitMnsgM2L2m00Z1W3AaHFu899ghdVXaoaaPw==
+  dependencies:
+    "@nervosnetwork/ckb-sdk-utils" "0.38.1"
+    axios "0.19.2"
+    tslib "2.0.1"
+
 "@nervosnetwork/ckb-sdk-utils@0.37.0":
   version "0.37.0"
   resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-utils/-/ckb-sdk-utils-0.37.0.tgz#25322c9b2860bee6672444e9a74ad699a3b83395"
@@ -580,6 +589,16 @@
     jsbi "3.1.3"
     tslib "2.0.1"
 
+"@nervosnetwork/ckb-sdk-utils@0.38.1":
+  version "0.38.1"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-utils/-/ckb-sdk-utils-0.38.1.tgz#6f9a2f8db62bd65b4160c699a401a25ae8553875"
+  integrity sha512-84F8nfLfuc7N6OZrWyEloFb5NhySi0uTCn22KjX9jdXdbel7qyME2Rqgn8hJhf7eW01GEJ1qX2+O0GZ+LMtSvg==
+  dependencies:
+    "@nervosnetwork/ckb-types" "0.38.1"
+    elliptic "6.5.3"
+    jsbi "3.1.3"
+    tslib "2.0.1"
+
 "@nervosnetwork/ckb-types@0.37.0":
   version "0.37.0"
   resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-types/-/ckb-types-0.37.0.tgz#2ac3261171c119895c91dc6f114dc55fbdc6a07e"
@@ -589,6 +608,11 @@
   version "0.38.0"
   resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-types/-/ckb-types-0.38.0.tgz#b3a05565e1993145fb65a8053c0d134bfd13a7a2"
   integrity sha512-H939GSMOUeuNF3ew7MbLN9pnAfPYoVC50g83pIlFbuZSwx3Mjmhi7lZSRlFcEmS/VlfgTYymLAhgE9KuMJAX+w==
+
+"@nervosnetwork/ckb-types@0.38.1":
+  version "0.38.1"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-types/-/ckb-types-0.38.1.tgz#9ca974b07d7065a269a91612fae716e9f884f92a"
+  integrity sha512-YK4KRCVVeuwYuHMjL5mUlWW2waBeYvYR+Pzzp1wFnPJDBtn22y+3z/oI/jNJE12hXLb8fVw2K6odCF6GTEc4yA==
 
 "@sindresorhus/is@^0.14.0":
   version "0.14.0"
