@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@ckb-lumos/indexer": "0.13.1",
-    "@nervosnetwork/ckb-sdk-core": "0.37.0",
+    "@nervosnetwork/ckb-sdk-core": "0.38.1",
     "@nervosnetwork/ckb-sdk-rpc": "0.37.0",
     "@nervosnetwork/ckb-sdk-utils": "0.38.0",
     "class-validator": "0.12.2",
