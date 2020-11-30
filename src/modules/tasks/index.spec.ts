@@ -9,12 +9,12 @@ const mockTokenIdList = ['0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135f
 
 const mockGetBidOrders = jest.fn().mockResolvedValue([])
 const mockGetAskOrders = jest.fn().mockResolvedValue([])
+const mockGetPendingDeals = jest.fn().mockResolvedValue([])
 const mockSaveDeal = jest.fn()
 
 const mockLoadCells = jest.fn()
 
 const mockMatch = jest.fn()
-const mockGetPendingDeals = jest.fn()
 const mockMatcherConstructor = jest.fn()
 let stubRawTx: any = null
 
@@ -30,8 +30,10 @@ jest.doMock(
   './matcher',
   () =>
     class {
-      constructor(...args) {
-        mockMatcherConstructor(...args)
+      dealMakerCell
+      constructor(bidOrderList, askOrderList, dealMakerCell) {
+        mockMatcherConstructor(bidOrderList, askOrderList, dealMakerCell)
+        this.dealMakerCell = dealMakerCell
       }
       match = mockMatch
       get rawTx() {
@@ -41,6 +43,7 @@ jest.doMock(
 )
 
 jest.setMock('../../utils/', {
+  ...jest.requireActual('../../utils'),
   logger: mockLogger,
   getPrivateKey: mockGetPrivateKey,
   signAndSendTransaction: mockSignAndSendTransaction,
@@ -60,6 +63,7 @@ import { container, modules } from '../../container'
 import { DealStatus } from '../orders/deal.entity'
 import { pendingDeal } from '../../mock'
 import { MATCH_ORDERS_CELL_DEPS } from '../../utils'
+import { OutPoint } from '@ckb-lumos/base/lib/core'
 
 const MOCK_REMOTE_URL = 'mock_remote_url'
 const MOCK_INDEXER_PATH = 'mock_indexer_path'
@@ -248,6 +252,7 @@ describe('Test tasks module', () => {
         mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
         mockOrdersService.getBidOrders.mockResolvedValue([1, 2, 3])
         mockOrdersService.getAskOrders.mockResolvedValue([1, 2, 3])
+        mockOrdersService.getPendingDeals.mockResolvedValue([])
         mockLoadCells.mockResolvedValue([
           {
             ...dealMakerCell,
@@ -255,6 +260,32 @@ describe('Test tasks module', () => {
               codeHash: '0x0',
               hashType: 'type',
               args: '0x0',
+            },
+          },
+        ])
+      })
+
+      it('should log and skip matching ', async () => {
+        const res = await tasksService.matchOrders()
+        expect(mockLogger.info).toBeCalledWith(
+          `\x1b[35m[Tasks Service]\x1b[0m: No normal cells or ${mockTokenIdList[0]} live cells`,
+        )
+        expect(res).toEqual(mockTokenIdList.map(() => false))
+      })
+    })
+
+    describe('when available deal maker cells are pending', () => {
+      beforeEach(() => {
+        mockGetPrivateKey.mockReturnValue('0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
+        mockOrdersService.getBidOrders.mockResolvedValue([1, 2, 3])
+        mockOrdersService.getAskOrders.mockResolvedValue([1, 2, 3])
+        mockOrdersService.getPendingDeals.mockResolvedValue([{ dealMakerCell: 'mock_tx_hash:mock_index' }])
+        mockLoadCells.mockResolvedValue([
+          {
+            ...dealMakerCell,
+            outPoint: {
+              txHash: 'mock_tx_hash',
+              index: 'mock_index',
             },
           },
         ])
@@ -277,6 +308,7 @@ describe('Test tasks module', () => {
         mockGetPrivateKey.mockReturnValue(PRIVATE_KEY)
         mockOrdersService.getBidOrders.mockResolvedValue(BID_ORDERS)
         mockOrdersService.getAskOrders.mockResolvedValue(ASK_ORDERS)
+        mockOrdersService.getPendingDeals.mockResolvedValue([])
         mockLoadCells.mockResolvedValue([dealMakerCell, { ...dealMakerCell, capacity: '0x0' }])
       })
 

@@ -18,6 +18,15 @@ export class Deal {
   @Column('varchar', { name: 'order_ids' })
   orderIds!: string
 
+  @Column('varchar', { name: 'deal_maker_cell' })
+  dealMakerCell!: string // txHash:index
+
+  @Column('varchar', { name: 'ckb_profit' })
+  ckbProfit!: string
+
+  @Column('varchar', { name: 'sudt_profit' })
+  sudtProfit!: string
+
   @Column('varchar')
   fee!: string
 

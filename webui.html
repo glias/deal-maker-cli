@@ -9,6 +9,8 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/pure/2.0.3/pure-min.css"
       crossorigin="anonymous"
     />
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300&display=swap" rel="stylesheet">
     <style>
       * {
         outline: none;
@@ -20,6 +22,8 @@
 
       table {
         width: 100%;
+        font-family: 'Lato', monospace;
+        text-align: right;
       }
 
       details {
@@ -59,23 +63,6 @@
   </head>
   <body>
     <details open>
-      <summary><h3>Ask Orders</h3></summary>
-      <table class="pure-table pure-table-bordered orders" id="ask-orders">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Price</th>
-            <th>Capacity</th>
-            <th>Order Amount</th>
-            <th>SUDT Amount</th>
-            <th>Out Point</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </details>
-
-    <details open>
       <summary>
         <h3>Bid Orders</h3>
       </summary>
@@ -95,6 +82,24 @@
     </details>
 
     <details open>
+      <summary><h3>Ask Orders</h3></summary>
+      <table class="pure-table pure-table-bordered orders" id="ask-orders">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Price</th>
+            <th>Capacity</th>
+            <th>Order Amount</th>
+            <th>SUDT Amount</th>
+            <th>Out Point</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
+
+
+    <details open>
       <summary>
         <h3>History</h3>
       </summary>
@@ -103,6 +108,8 @@
           <tr>
             <th>#</th>
             <th>Tx Hash</th>
+            <th>CKB Profit</th>
+            <th>sUDT Profit</th>
             <th>Fee</th>
             <th>Status</th>
             <th>Created Time</th>
@@ -177,6 +184,8 @@
       const keyFileForm = document.querySelector('#key-file')
       const setConfigPanel = document.querySelector('#set-config-panel')
 
+      const numberFormat = Intl.NumberFormat()
+
       remoteUrlForm.addEventListener('submit', e => {
         e.preventDefault()
         const { value } = e.target.url
@@ -196,10 +205,10 @@
           (_order, _idx) =>
             `<tr>
             <td>${_idx + 1}</td>
-            <td>${_order.price}</td>
-            <td>${BigInt(_order.capacity)}</td>
-            <td>${_order.orderAmount}</td>
-            <td>${_order.sudtAmount}</td>
+            <td>${numberFormat.format(BigInt(_order.price))}</td>
+            <td>${numberFormat.format(BigInt(_order.capacity))}</td>
+            <td>${numberFormat.format(BigInt(_order.orderAmount))}</td>
+            <td>${numberFormat.format(BigInt(_order.sudtAmount))}</td>
             <td title=${_order.outPoint}>${_order.outPoint}</td>
             </tr>`,
         )
@@ -216,7 +225,9 @@
               `<tr>
             <td>${_idx + 1}</td>
             <td>${_deal.txHash}</td>
-            <td>${_deal.fee}</td>
+            <td>${numberFormat.format(BigInt(_deal.ckbProfit))}</td>
+            <td>${numberFormat.format(BigInt(_deal.sudtProfit))}</td>
+            <td>${numberFormat.format(BigInt(_deal.fee))}</td>
             <td>${_deal.status}</td>
             <td>${_deal.createdAt}</td>
             </tr>`,
