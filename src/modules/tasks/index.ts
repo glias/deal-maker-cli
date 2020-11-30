@@ -1,5 +1,5 @@
 import { injectable, inject, LazyServiceIdentifer } from 'inversify'
-import { privateKeyToPublicKey, blake160 } from '@nervosnetwork/ckb-sdk-utils'
+import { privateKeyToPublicKey, blake160, rawTransactionToHash } from '@nervosnetwork/ckb-sdk-utils'
 import loadCells from '@nervosnetwork/ckb-sdk-core/lib/loadCellsFromIndexer'
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import { CronJob } from 'cron'
@@ -17,7 +17,7 @@ import {
   SUDT_TYPE_ARGS_LIST,
   SECP256K1_CODE_HASH,
 } from '../../utils'
-import { DealStatus } from '../orders/deal.entity'
+import { Deal, DealStatus } from '../orders/deal.entity'
 import Matcher from './matcher'
 
 const logTag = `\x1b[35m[Tasks Service]\x1b[0m`
@@ -50,18 +50,6 @@ class TasksService {
     await this.startIndexer()
     await this.scanOrderCells()
     this.subscribeOrderCell()
-    // const config = await this.#configService.getConfig()
-    // // REFACTOR: should start a single cron job
-    // SUDT_TYPE_ARGS_LIST.forEach((args: string) => {
-    //   // istanbul ignore next
-    //   new CronJob(
-    //     this.#schedule.match,
-    //     // () => this.#ordersService.prepareMatch(args, this.#indexer, config.keyFile),
-    //     this.matchOrders,
-    //     null,
-    //     true,
-    //   )
-    // })
     new CronJob(this.#schedule.match, this.matchOrders, null, true)
     new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
   }
@@ -118,9 +106,10 @@ class TasksService {
     }
     return Promise.all(
       SUDT_TYPE_ARGS_LIST.map(async tokenId => {
-        const [bidOrderList, askOrderList] = await Promise.all([
+        const [bidOrderList, askOrderList, pendingDeals] = await Promise.all([
           this.#ordersService.getBidOrders(tokenId),
           this.#ordersService.getAskOrders(tokenId),
+          this.#ordersService.getPendingDeals(),
         ])
 
         if (!askOrderList.length || !bidOrderList.length) {
@@ -135,7 +124,12 @@ class TasksService {
         }
 
         const liveCells = await loadCells({ indexer: this.#indexer, CellCollector, lock: dealMakerLock })
-        const dealMakerCells = liveCells.filter(cell => cell.type?.args === tokenId || !cell.type)
+        const pendingDealMakerCellOutPoints = pendingDeals.map(deal => deal.dealMakerCell)
+        const dealMakerCells = liveCells.filter(
+          cell =>
+            !pendingDealMakerCellOutPoints.includes(`${cell.outPoint.txHash}:${cell.outPoint.index}`) &&
+            (cell.type?.args === tokenId || !cell.type),
+        )
         if (!dealMakerCells.length) {
           this.#info(`No normal cells or ${tokenId} live cells`)
           return false
@@ -154,16 +148,22 @@ class TasksService {
           .slice(1)
           .map(i => `${i.previousOutput?.txHash}-${i.previousOutput?.index}`)
           .join()
-        const dealRecord = {
-          txHash: '',
+
+        const rawTx = matcher.rawTx
+        const txHash = rawTransactionToHash(rawTx)
+        const dealRecord: Omit<Deal, 'createdAt'> = {
+          txHash,
           tokenId,
           orderIds,
-          fee: `${matcher.dealMakerCapacityAmount - matcher.minerFee}-${matcher.dealMakerSudtAmount}`,
+          fee: `${matcher.minerFee}`,
+          dealMakerCell: `${matcher.dealMakerCell.outPoint.txHash}:${matcher.dealMakerCell.outPoint.index}`,
+          ckbProfit: `${matcher.dealMakerCapacityAmount}`,
+          sudtProfit: `${matcher.dealMakerSudtAmount}`,
           status: DealStatus.Pending,
         }
 
         try {
-          const response = await signAndSendTransaction(matcher.rawTx, privateKey)
+          const response = await signAndSendTransaction(rawTx, privateKey)
           dealRecord.txHash = response
         } catch (error) {
           this.#warn(error)
