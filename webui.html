@@ -9,8 +9,8 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/pure/2.0.3/pure-min.css"
       crossorigin="anonymous"
     />
-    <link rel="preconnect" href="https://fonts.gstatic.com">
-<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300&display=swap" rel="stylesheet" />
     <style>
       * {
         outline: none;
@@ -24,6 +24,11 @@
         width: 100%;
         font-family: 'Lato', monospace;
         text-align: right;
+      }
+
+      table.orders th:first-child,
+      table.orders td:first-child {
+        width: 20px;
       }
 
       details {
@@ -69,7 +74,7 @@
           <tr>
             <th>#</th>
             <th>Price</th>
-            <th>Capacity</th>
+            <th>Net Capacity</th>
             <th>Order Amount</th>
             <th>SUDT Amount</th>
             <th>Out Point</th>
@@ -88,7 +93,7 @@
           <tr>
             <th>#</th>
             <th>Price</th>
-            <th>Capacity</th>
+            <th>Net Capacity</th>
             <th>Order Amount</th>
             <th>SUDT Amount</th>
             <th>Out Point</th>
@@ -205,7 +210,7 @@
             `<tr>
             <td>${_idx + 1}</td>
             <td>${numberFormat.format(BigInt(_order.price))}</td>
-            <td>${numberFormat.format(BigInt(_order.capacity))}</td>
+            <td>${numberFormat.format(BigInt(_order.capacity) - 17900000000n)}</td>
             <td>${numberFormat.format(BigInt(_order.orderAmount))}</td>
             <td>${numberFormat.format(BigInt(_order.sudtAmount))}</td>
             <td title=${_order.outPoint}>${_order.outPoint}</td>

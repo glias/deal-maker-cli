@@ -7,7 +7,6 @@ import {
   readBigUInt128LE,
   FEE,
   FEE_RATIO,
-  SHANNONS_RATIO,
   PRICE_RATIO,
   MATCH_ORDERS_CELL_DEPS,
   bigIntToUint128Le,
@@ -103,20 +102,25 @@ export default class {
       const bidOrder = this.bidOrderList.shift()!
       const askOrder = this.askOrderList.shift()!
 
-      const price = ((askOrder.price + bidOrder.price) * SHANNONS_RATIO) / (BigInt(2) * PRICE_RATIO)
+      const price = (askOrder.price + bidOrder.price) / (BigInt(2) * PRICE_RATIO)
 
       const bidAmount = {
-        costAmount: (price * bidOrder.info.orderAmount) / SHANNONS_RATIO, // cost capacity
+        costAmount: price * bidOrder.info.orderAmount, // cost capacity
         balance: bidOrder.info.capacity, // balance in capacity
         orderAmount: bidOrder.info.orderAmount, // order amount in sudt
         targetAmount: bidOrder.info.sudtAmount + bidOrder.info.orderAmount, // target amount in sudt
       }
 
       const askAmount = {
-        costAmount: (askOrder.info.orderAmount * SHANNONS_RATIO) / price, // cost sudt
+        costAmount: askOrder.info.orderAmount / price, // cost sudt
         balance: askOrder.info.sudtAmount, // balance in sudt
-        orderAmount: askOrder.info.orderAmount, // order amount in capacity
-        targetAmount: askOrder.info.capacity + askOrder.info.orderAmount, // target amount in capacity
+        orderAmount: (askOrder.info.orderAmount / price) * price, // order amount in capacity
+        targetAmount: askOrder.info.capacity + (askOrder.info.orderAmount / price) * price, // target amount in capacity
+      }
+
+      if (askAmount.orderAmount === BigInt(0)) {
+        this.bidOrderList.unshift(bidOrder)
+        continue
       }
 
       if (bidAmount.orderAmount === askAmount.costAmount) {
@@ -127,7 +131,7 @@ export default class {
 
       if (bidAmount.orderAmount < askAmount.costAmount) {
         this.handleFullMatchedOrder(bidOrder, bidAmount)
-        this.handlePartialMatchedAskOrder(askOrder, { capacity: bidAmount.costAmount, sudt: bidOrder.info.orderAmount })
+        this.handlePartialMatchedAskOrder(askOrder, { capacity: bidAmount.costAmount, sudt: bidAmount.orderAmount })
         continue
       }
 
@@ -191,7 +195,7 @@ export default class {
         scripts: order.scripts,
         info: {
           sudtAmount: remain,
-          orderAmount: BigInt(0),
+          orderAmount: order.info.orderAmount + order.info.capacity - targetAmount,
           price: order.price,
           capacity: targetAmount,
           type: OrderType.Ask,

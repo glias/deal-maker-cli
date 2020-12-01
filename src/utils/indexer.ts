@@ -1,13 +1,10 @@
 import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import { Cell } from '@ckb-lumos/base'
 import { logger } from './logger'
-import { ORDER_SCRIPTS, ORDER_DATA_LENGTH } from './conts'
+import { ORDER_SCRIPTS } from './conts'
+import { isCellValid } from './validator'
 
 const logTag = `\x1b[35m[Indexer]\x1b[0m`
-
-const isCellValid = (cell: Cell) => {
-  return cell.data?.length === ORDER_DATA_LENGTH
-}
 
 export const startIndexer = async (url: string, dbPath: string) => {
   const indexer = new Indexer(url, dbPath)

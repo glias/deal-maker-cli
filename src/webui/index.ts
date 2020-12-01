@@ -8,7 +8,7 @@ import { Config } from '../modules/config/config.entity'
 const logTag = `\x1b[35m[Web UI]\x1b[0m`
 
 type Order = Record<'price' | 'sudtAmount' | 'orderAmount' | 'outPoint' | 'capacity', string>
-type Deal = Record<'txHash' | 'fee' | 'status' | 'createdAt', string>
+type Deal = Record<'txHash' | 'fee' | 'ckbProfit' | 'sudtProfit' | 'status' | 'createdAt', string>
 
 export interface Stat {
   askOrders: Array<Order>

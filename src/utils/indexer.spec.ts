@@ -4,15 +4,46 @@ const mockIndexerConstructor = jest.fn()
 const mockCellCollectorConstructor = jest.fn()
 const mockIndexerSubscribe = jest.fn()
 
+const mockCell = {
+  cell_output: {
+    capacity: '0x1b618f4914',
+    lock: {
+      code_hash: '0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500',
+      hash_type: 'type',
+      args: '0xcd4259b4a39812deed351f9f647972cb064a3473aa1681c0ee8899bccd46e89f',
+    },
+    type: {
+      code_hash: '0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419',
+      hash_type: 'data',
+      args: '0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947',
+    },
+  },
+  out_point: {
+    tx_hash: '0xbdde18cdb8e879fabbd06c717c219f9bc95d5089cd4bd4393f3ba472d3412a6c',
+    index: '0x0',
+  },
+  block_hash: '0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e',
+  block_number: '0x7542f',
+}
+
 class MockCellCollector {
   left: number = 1
   constructor(...args) {
     mockCellCollectorConstructor(...args)
   }
   async *collect() {
-    yield { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0600000000' }
-    yield { data: '0x' }
-    yield { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0611111111' }
+    yield {
+      ...mockCell,
+      data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0600000000',
+    }
+    yield {
+      ...mockCell,
+      data: '0x',
+    }
+    yield {
+      ...mockCell,
+      data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0611111101',
+    }
     return
   }
 }
@@ -79,8 +110,8 @@ describe('Test Indexer Utils', () => {
     it('should handle 2 mock cell and skip invalid cell', async () => {
       const res = await scanOrderCells(indexer, mockCellHandler)
       expect(mockCellHandler).toBeCalledWith([
-        { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0600000000' },
-        { data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0611111111' },
+        { ...mockCell, data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0600000000' },
+        { ...mockCell, data: '0xa150f1050000000000000000000000000000000000000000000000000000000000ac23fc0611111101' },
       ])
       expect(res).toBe(2)
     })

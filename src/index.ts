@@ -144,6 +144,8 @@ export default class DealMaker {
       return {
         txHash: deal.txHash,
         fee: deal.fee,
+        ckbProfit: deal.ckbProfit,
+        sudtProfit: deal.sudtProfit,
         status: DealStatus[deal.status],
         createdAt: deal.createdAt.toISOString(),
       }
