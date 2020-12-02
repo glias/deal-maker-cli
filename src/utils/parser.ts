@@ -1,5 +1,7 @@
 import type { Cell } from '@ckb-lumos/base'
 import { toUint64Le } from '@nervosnetwork/ckb-sdk-utils/lib/convertors'
+import { OrderType } from '../modules/orders/order.entity'
+import { PRICE_RATIO } from './conts'
 
 const readBigUInt64LE = (rawHexString: string) => {
   return Buffer.from(rawHexString, 'hex').readBigUInt64LE().toString(16)
@@ -124,4 +126,31 @@ export const parsePlaceOrderTx = (inputs: Orders, outputs: Orders) => {
     minerLog,
     delta,
   }
+}
+
+type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
+export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo) => {
+  // console.log({bidOrderInfo, askOrderInfo})
+  const price = (bidOrderInfo.price + askOrderInfo.price) / BigInt(2)
+
+  const bidCostAmount = (price * bidOrderInfo.orderAmount) / PRICE_RATIO // cost capacity
+  const bidOrderAmount = (bidCostAmount * PRICE_RATIO) / price // sudt
+
+  const bidAmount = {
+    costAmount: bidCostAmount, // cost capacity
+    balance: bidOrderInfo.capacity, // balance in capacity
+    orderAmount: bidOrderAmount, // order amount in sudt
+    targetAmount: bidOrderInfo.sudtAmount + bidOrderAmount, // target amount in sudt
+  }
+
+  const askCostAmount = (askOrderInfo.orderAmount * PRICE_RATIO) / price // sudt
+  const askOrderAmount = (askCostAmount * price) / PRICE_RATIO // ckb
+
+  const askAmount = {
+    costAmount: askCostAmount, // cost sudt
+    balance: askOrderInfo.sudtAmount, // balance in sudt
+    orderAmount: askOrderAmount, // order amount in capacity
+    targetAmount: askOrderInfo.capacity + askOrderAmount, // target capacity
+  }
+  return { askAmount, bidAmount, price }
 }

@@ -1,4 +1,4 @@
-import { formatOrderData, parseOrderCell, parseOrderData, parsePlaceOrderTx } from './parser'
+import { formatOrderData, parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo } from './parser'
 describe('Test parser', () => {
   it('parse order data', () => {
     const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001'
@@ -130,6 +130,107 @@ describe('Test parser', () => {
         'sudt:before': BigInt(149551),
         'sudt:delta': BigInt(747757),
       },
+    })
+  })
+
+  describe('format deal info', () => {
+    it('imperfect price for order amount', () => {
+      const fixture = {
+        askOrderInfo: {
+          capacity: BigInt(24_667_575_757),
+          sudtAmount: BigInt(1_501_460_607),
+          orderAmount: BigInt(3_242_424_243),
+          price: BigInt(50_000_000_000),
+          type: 1,
+        },
+        bidOrderInfo: {
+          capacity: BigInt(30_200_000_000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(2_452_642_073),
+          price: BigInt(50_000_000_000),
+          type: 0,
+        },
+      }
+      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      expect(askAmount).toEqual({
+        balance: BigInt(1_501_460_607),
+        costAmount: BigInt(648_484_848),
+        orderAmount: BigInt(3_242_424_240),
+        targetAmount: BigInt(27_909_999_997),
+      })
+      expect(bidAmount).toEqual({
+        balance: BigInt(30_200_000_000),
+        costAmount: BigInt(12_263_210_365),
+        orderAmount: BigInt(2_452_642_073),
+        targetAmount: BigInt(2_452_642_073),
+      })
+      expect(price).toBe(BigInt(50_000_000_000))
+    })
+
+    it('perfect price for order amount', () => {
+      const fixture = {
+        askOrderInfo: {
+          capacity: BigInt(24_667_575_757),
+          sudtAmount: BigInt(1_501_460_607),
+          orderAmount: BigInt(3_242_424_240),
+          price: BigInt(50_000_000_000),
+          type: 1,
+        },
+        bidOrderInfo: {
+          capacity: BigInt(30_200_000_000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(2_452_642_073),
+          price: BigInt(50_000_000_000),
+          type: 0,
+        },
+      }
+      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      expect(askAmount).toEqual({
+        balance: BigInt(1_501_460_607),
+        costAmount: BigInt(648_484_848),
+        orderAmount: BigInt(3_242_424_240),
+        targetAmount: BigInt(27_909_999_997),
+      })
+      expect(bidAmount).toEqual({
+        balance: BigInt(30_200_000_000),
+        costAmount: BigInt(12_263_210_365),
+        orderAmount: BigInt(2_452_642_073),
+        targetAmount: BigInt(2_452_642_073),
+      })
+      expect(price).toBe(BigInt(50_000_000_000))
+    })
+
+    it.only('decimal price', () => {
+      const fixture = {
+        askOrderInfo: {
+          capacity: BigInt(24_667_575_757),
+          sudtAmount: BigInt(1_501_460_607),
+          orderAmount: BigInt(3_242_424_240),
+          price: BigInt(5),
+          type: 1,
+        },
+        bidOrderInfo: {
+          capacity: BigInt(30_200_000_000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(2_452_642_073),
+          price: BigInt(5),
+          type: 0,
+        },
+      }
+      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      expect(askAmount).toEqual({
+        balance: BigInt(1_501_460_607),
+        costAmount: BigInt(648_484_848_0_000_000_000),
+        orderAmount: BigInt(3_242_424_240),
+        targetAmount: BigInt(27_909_999_997),
+      })
+      expect(bidAmount).toEqual({
+        balance: BigInt(30_200_000_000),
+        costAmount: BigInt(1),
+        orderAmount: BigInt(2_000_000_000),
+        targetAmount: BigInt(2_000_000_000),
+      })
+      expect(price).toBe(BigInt(5))
     })
   })
 })

@@ -3,11 +3,11 @@ import { OrderDto } from '../orders/order.dto'
 import { OrderType } from '../orders/order.entity'
 import {
   parseOrderData,
+  formatDealInfo,
   formatOrderData,
   readBigUInt128LE,
   FEE,
   FEE_RATIO,
-  PRICE_RATIO,
   MATCH_ORDERS_CELL_DEPS,
   bigIntToUint128Le,
 } from '../../utils'
@@ -102,24 +102,15 @@ export default class {
       const bidOrder = this.bidOrderList.shift()!
       const askOrder = this.askOrderList.shift()!
 
-      const price = (askOrder.price + bidOrder.price) / (BigInt(2) * PRICE_RATIO)
-
-      const bidAmount = {
-        costAmount: price * bidOrder.info.orderAmount, // cost capacity
-        balance: bidOrder.info.capacity, // balance in capacity
-        orderAmount: bidOrder.info.orderAmount, // order amount in sudt
-        targetAmount: bidOrder.info.sudtAmount + bidOrder.info.orderAmount, // target amount in sudt
-      }
-
-      const askAmount = {
-        costAmount: askOrder.info.orderAmount / price, // cost sudt
-        balance: askOrder.info.sudtAmount, // balance in sudt
-        orderAmount: (askOrder.info.orderAmount / price) * price, // order amount in capacity
-        targetAmount: askOrder.info.capacity + (askOrder.info.orderAmount / price) * price, // target amount in capacity
-      }
+      const { bidAmount, askAmount } = formatDealInfo(bidOrder.info, askOrder.info)
 
       if (askAmount.orderAmount === BigInt(0)) {
         this.bidOrderList.unshift(bidOrder)
+        continue
+      }
+
+      if (bidAmount.orderAmount === BigInt(0)) {
+        this.askOrderList.unshift(askOrder)
         continue
       }
 
