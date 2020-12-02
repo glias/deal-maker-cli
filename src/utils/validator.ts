@@ -12,17 +12,23 @@ export const isCellValid = (cell: Cell) => {
       throw new Error('Invalid data length')
     }
     const { price, orderAmount, sudtAmount, output, type } = parseOrderCell(cell)
-    const capacity = BigInt(output.capacity) - ORDER_CELL_SIZE * SHANNONS_RATIO
+    const freeCapacity = BigInt(output.capacity) - ORDER_CELL_SIZE * SHANNONS_RATIO
 
     if (+type === OrderType.Bid) {
-      if (orderAmount * price > capacity * PRICE_RATIO) {
-        throw new Error('Invalid order amount')
+      if (orderAmount * price > freeCapacity * PRICE_RATIO) {
+        throw new Error('Order amount is too high')
+      }
+      if ((orderAmount * price) / PRICE_RATIO === BigInt(0)) {
+        throw new Error('Order amount is too low')
       }
       return true
     }
     if (+type === OrderType.Ask) {
       if (orderAmount * PRICE_RATIO > sudtAmount * price) {
-        throw new Error('Invalid order amount')
+        throw new Error('Order amount is too high')
+      }
+      if ((orderAmount * PRICE_RATIO) / price === BigInt(0)) {
+        throw new Error('Order amount is too low')
       }
       return true
     }
