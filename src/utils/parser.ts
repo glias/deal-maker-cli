@@ -130,7 +130,6 @@ export const parsePlaceOrderTx = (inputs: Orders, outputs: Orders) => {
 
 type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
 export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo) => {
-  // console.log({bidOrderInfo, askOrderInfo})
   const price = (bidOrderInfo.price + askOrderInfo.price) / BigInt(2)
 
   const bidCostAmount = (price * bidOrderInfo.orderAmount) / PRICE_RATIO // cost capacity

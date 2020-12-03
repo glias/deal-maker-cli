@@ -99,34 +99,82 @@ export default class {
       this.bidOrderList.length &&
       this.askOrderList[0].price <= this.bidOrderList[0].price
     ) {
-      const bidOrder = this.bidOrderList.shift()!
-      const askOrder = this.askOrderList.shift()!
+      const bidOrder = this.bidOrderList[0]
+      const askOrder = this.askOrderList[0]
 
       const { bidAmount, askAmount } = formatDealInfo(bidOrder.info, askOrder.info)
 
       if (askAmount.orderAmount === BigInt(0)) {
-        this.bidOrderList.unshift(bidOrder)
+        this.askOrderList.shift()
         continue
       }
 
       if (bidAmount.orderAmount === BigInt(0)) {
-        this.askOrderList.unshift(askOrder)
+        this.bidOrderList.shift()
         continue
       }
 
       if (bidAmount.orderAmount === askAmount.costAmount) {
+        if (bidAmount.balance * FEE_RATIO < bidAmount.costAmount * FEE_RATIO + bidAmount.costAmount * FEE) {
+          if (bidOrder.part) {
+            break
+          }
+          this.bidOrderList.shift()
+          continue
+        }
+
+        if (askAmount.balance * FEE_RATIO < askAmount.costAmount * FEE_RATIO + askAmount.costAmount * FEE) {
+          if (askOrder.part) {
+            break
+          }
+          this.askOrderList.shift()
+          continue
+        }
+
         this.handleFullMatchedOrder(bidOrder, bidAmount)
         this.handleFullMatchedOrder(askOrder, askAmount)
         continue
       }
 
       if (bidAmount.orderAmount < askAmount.costAmount) {
+        if (bidAmount.balance * FEE_RATIO < bidAmount.costAmount * FEE_RATIO + bidAmount.costAmount * FEE) {
+          if (bidOrder.part) {
+            break
+          }
+          this.bidOrderList.shift()
+          continue
+        }
+
+        if (askOrder.info.sudtAmount * FEE_RATIO < bidAmount.orderAmount * FEE_RATIO + bidAmount.orderAmount * FEE) {
+          if (askOrder.part) {
+            break
+          }
+          this.askOrderList.shift()
+          continue
+        }
+
         this.handleFullMatchedOrder(bidOrder, bidAmount)
         this.handlePartialMatchedAskOrder(askOrder, { capacity: bidAmount.costAmount, sudt: bidAmount.orderAmount })
         continue
       }
 
       if (bidAmount.orderAmount > askAmount.costAmount) {
+        if (askAmount.balance * FEE_RATIO < askAmount.costAmount * FEE_RATIO + askAmount.costAmount * FEE) {
+          if (askOrder.part) {
+            break
+          }
+          this.askOrderList.shift()
+          continue
+        }
+
+        if (bidOrder.info.capacity * FEE_RATIO < askAmount.orderAmount * FEE_RATIO + askAmount.orderAmount * FEE) {
+          if (bidOrder.part) {
+            break
+          }
+          this.bidOrderList.shift()
+          continue
+        }
+
         this.handleFullMatchedOrder(askOrder, askAmount)
         this.handlePartialMatchedBidOrder(bidOrder, { capacity: askAmount.orderAmount, sudt: askAmount.costAmount })
         continue
@@ -146,7 +194,7 @@ export default class {
     const sudtAmount = askOrder.info.sudtAmount - dealtAmount.sudt - fee
     const capacity = askOrder.info.capacity + dealtAmount.capacity
     const info = { capacity, sudtAmount, orderAmount, price: askOrder.price, type: OrderType.Ask }
-    this.askOrderList.unshift({ ...askOrder, info, part: true })
+    this.askOrderList[0] = { ...askOrder, info, part: true }
     this.dealMakerSudtAmount += fee
   }
 
@@ -156,7 +204,7 @@ export default class {
     const orderAmount = bidOrder.info.orderAmount - dealtAmount.sudt
     const sudtAmount = bidOrder.info.sudtAmount + dealtAmount.sudt
     const info = { capacity, sudtAmount, orderAmount, price: bidOrder.price, type: OrderType.Bid }
-    this.bidOrderList.unshift({ ...bidOrder, info, part: true })
+    this.bidOrderList[0] = { ...bidOrder, info, part: true }
     this.dealMakerCapacityAmount += fee
   }
 
@@ -179,6 +227,7 @@ export default class {
           type: OrderType.Bid,
         },
       })
+      this.bidOrderList.shift()
     } else {
       this.dealMakerSudtAmount += fee
       this.matchedOrderList.push({
@@ -192,6 +241,7 @@ export default class {
           type: OrderType.Ask,
         },
       })
+      this.askOrderList.shift()
     }
   }
 
