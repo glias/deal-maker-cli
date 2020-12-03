@@ -3,7 +3,7 @@
     "valid bid order": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b618f4914",
+          "capacity": "0x1b73559458",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -25,10 +25,10 @@
       },
       "expected": true
     },
-    "invalid bid order, capacity is not enough: { price: 1, orderAmount: 99700897300, capacity: 10000000000, type: 00 }": {
+    "invalid bid order, capacity is not enough: { price: 1, orderAmount: 99700897300, capacity: 117899999991, type: 00 }": {
       "cell": {
         "cell_output": {
-          "capacity": "0x67ef83700",
+          "capacity": "0x1b73559457",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -96,11 +96,11 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x14f6a23617000000000000000000000014f6a23617000000000000000000000000e40b540200000001"
+        "data": "0x5841694817000000000000000000000014f6a23617000000000000000000000000e40b540200000001"
       },
       "expected": true
     },
-    "invalid ask order, sudt amount is not enough: { price: 1, orderAmount: 99700897300, capacity: 99700897300, sudtAmount: 99700897299, type: 01 } ": {
+    "invalid ask order, sudt amount is not enough: { price: 1, orderAmount: 99700897300, capacity: 99700897300, sudtAmount: 99999105367, type: 01 } ": {
       "cell": {
         "cell_output": {
           "capacity": "0x1b618f4914",
@@ -121,7 +121,7 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x13f6a23617000000000000000000000014f6a23617000000000000000000000000e40b540200000001"
+        "data": "0x5741694817000000000000000000000014f6a23617000000000000000000000000e40b540200000001"
       },
       "expected": false
     },

@@ -1,6 +1,6 @@
 import { Cell } from '@ckb-lumos/base'
 import { logger } from './logger'
-import { ORDER_DATA_LENGTH, PRICE_RATIO, ORDER_CELL_SIZE, SHANNONS_RATIO } from './conts'
+import { ORDER_DATA_LENGTH, PRICE_RATIO, ORDER_CELL_SIZE, SHANNONS_RATIO, FEE, FEE_RATIO } from './conts'
 import { parseOrderCell } from './parser'
 import { OrderType } from '../modules/orders/order.entity'
 
@@ -15,7 +15,8 @@ export const isCellValid = (cell: Cell) => {
     const freeCapacity = BigInt(output.capacity) - ORDER_CELL_SIZE * SHANNONS_RATIO
 
     if (+type === OrderType.Bid) {
-      if (orderAmount * price > freeCapacity * PRICE_RATIO) {
+      const costAmount = orderAmount * price
+      if (costAmount + (costAmount * FEE) / (FEE + FEE_RATIO) > freeCapacity * PRICE_RATIO) {
         throw new Error('Order amount is too high')
       }
       if ((orderAmount * price) / PRICE_RATIO === BigInt(0)) {
@@ -24,7 +25,8 @@ export const isCellValid = (cell: Cell) => {
       return true
     }
     if (+type === OrderType.Ask) {
-      if (orderAmount * PRICE_RATIO > sudtAmount * price) {
+      const costAmount = orderAmount * PRICE_RATIO
+      if (costAmount + (costAmount * FEE) / (FEE + FEE_RATIO) > sudtAmount * price) {
         throw new Error('Order amount is too high')
       }
       if ((orderAmount * PRICE_RATIO) / price === BigInt(0)) {
