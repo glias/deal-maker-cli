@@ -221,7 +221,7 @@ export default class {
         scripts: order.scripts,
         info: {
           sudtAmount: targetAmount,
-          orderAmount: BigInt(0),
+          orderAmount: order.info.orderAmount + order.info.sudtAmount - targetAmount,
           price: order.price,
           capacity: remain,
           type: OrderType.Bid,
