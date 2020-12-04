@@ -1,7 +1,7 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository, Not, In } from 'typeorm'
 import rpcResultFormatter from '@nervosnetwork/ckb-sdk-rpc/lib/resultFormatter'
-import { parseOrderCell, SUDT_TYPE_ARGS_LIST, FEE, FEE_RATIO, SHANNONS_RATIO, PRICE_RATIO } from '../../utils'
+import { parseOrderCell, SUDT_TYPE_ARGS_LIST, FEE, FEE_RATIO, SHANNONS_RATIO, PRICE_RATIO, logger } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
 @injectable()
@@ -77,26 +77,31 @@ class OrderRepository extends Repository<Order> {
     }
 
     // TODO get min capacity and get min sudt amount
-    switch (+cell.type) {
-      case OrderType.Bid: {
-        const MIN_SHANNONS = BigInt(17_900_000_000)
-        const minCapacity =
-          (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
-          MIN_SHANNONS
+    try {
+      switch (+cell.type) {
+        case OrderType.Bid: {
+          const MIN_SHANNONS = BigInt(17_900_000_000)
+          const minCapacity =
+            (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
+            MIN_SHANNONS
 
-        return BigInt(cell.output.capacity) < minCapacity
-      }
-      case OrderType.Ask: {
-        if (!cell.sudtAmount) {
+          return BigInt(cell.output.capacity) < minCapacity
+        }
+        case OrderType.Ask: {
+          if (!cell.sudtAmount) {
+            return true
+          }
+          const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO * PRICE_RATIO) / (cell.price * SHANNONS_RATIO)
+          const minSudtOrderAmount = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
+          return cell.sudtAmount < minSudtOrderAmount
+        }
+        default: {
           return true
         }
-        const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO) / ((cell.price * SHANNONS_RATIO) / PRICE_RATIO)
-        const minSudtOrderAmount = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
-        return cell.sudtAmount < minSudtOrderAmount
       }
-      default: {
-        return true
-      }
+    } catch (err) {
+      logger.warn(`${cell.id}-${err.message}`)
+      return true
     }
   }
 }

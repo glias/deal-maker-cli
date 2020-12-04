@@ -61,7 +61,9 @@ export default class {
       capacity: BigInt(this.dealMakerCell.capacity) + this.dealMakerCapacityAmount,
       sudt:
         this.dealMakerSudtAmount +
-        (this.dealMakerCell.data ? BigInt('0x' + readBigUInt128LE(this.dealMakerCell.data.slice(2))) : BigInt(0)),
+        (this.dealMakerCell.data !== '0x'
+          ? BigInt('0x' + readBigUInt128LE(this.dealMakerCell.data.slice(2)))
+          : BigInt(0)),
     }
     const dealMakerCell = {
       input: { previousOutput: this.dealMakerCell.outPoint, since: '0x0' },
