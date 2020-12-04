@@ -1,11 +1,6 @@
 import type { Cell } from '@ckb-lumos/base'
-import { toUint64Le } from '@nervosnetwork/ckb-sdk-utils/lib/convertors'
 import { OrderType } from '../modules/orders/order.entity'
 import { PRICE_RATIO } from './conts'
-
-const readBigUInt64LE = (rawHexString: string) => {
-  return Buffer.from(rawHexString, 'hex').readBigUInt64LE().toString(16)
-}
 
 /**
  *
@@ -21,12 +16,12 @@ export const parseOrderData = (
 ): Record<'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: '00' | '01' } => {
   const sudtAmount = data.slice(2, 34)
   const orderAmount = data.slice(34, 66)
-  const price = data.slice(66, 82)
-  const type = data.slice(82, 84) as '00' | '01'
+  const price = data.slice(66, 98)
+  const type = data.slice(98, 100) as '00' | '01'
   return {
     sudtAmount: BigInt('0x' + readBigUInt128LE(sudtAmount)),
     orderAmount: BigInt('0x' + readBigUInt128LE(orderAmount)),
-    price: BigInt('0x' + readBigUInt64LE(price)),
+    price: BigInt('0x' + readBigUInt128LE(price)),
     type,
   }
 }
@@ -61,9 +56,7 @@ export const bigIntToUint128Le = (u128: bigint) => {
 }
 
 export const formatOrderData = (currentSudtAmount: bigint, orderAmount: bigint, price: bigint, type: '00' | '01') => {
-  return `0x${bigIntToUint128Le(currentSudtAmount)}${bigIntToUint128Le(orderAmount)}${toUint64Le(price).slice(
-    2,
-  )}${type}`
+  return `0x${bigIntToUint128Le(currentSudtAmount)}${bigIntToUint128Le(orderAmount)}${bigIntToUint128Le(price)}${type}`
 }
 
 type Order = ReturnType<typeof parseOrderData> & { capacity: bigint }

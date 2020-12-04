@@ -59,7 +59,7 @@ class OrderRepository extends Repository<Order> {
             type: cell.output.type && rpcResultFormatter.toScript(cell.output.type),
           }),
           type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
-          price: cell.price.toString(16).padStart(16, '0'),
+          price: cell.price.toString(16).padStart(32, '0'),
         })
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {

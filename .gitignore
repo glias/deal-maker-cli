@@ -108,6 +108,7 @@ typings/
 # dotenv environment variables file
 .env
 .env.test
+.env.prod
 .env*.local
 
 # typeorm config

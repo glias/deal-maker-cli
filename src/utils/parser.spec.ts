@@ -1,7 +1,7 @@
 import { formatOrderData, parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo } from './parser'
 describe('Test parser', () => {
   it('parse order data', () => {
-    const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001'
+    const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b000000000000000000000001'
 
     expect(parseOrderData(DATA)).toEqual({
       sudtAmount: BigInt(50000000000),
@@ -32,7 +32,7 @@ describe('Test parser', () => {
       },
       block_hash: '0xaaeee4a93a1d79ccdf50f9e2e6c688f9d935bb8c21aeaf2c09508f8070b1bd89',
       block_number: '0x13',
-      data: '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b00000001',
+      data: '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b000000000000000000000001',
     }
     expect(parseOrderCell(CELL as any)).toEqual({
       id: `${CELL.out_point.tx_hash}-${CELL.out_point.index}`,
@@ -48,7 +48,7 @@ describe('Test parser', () => {
 
   it('format order data', () => {
     expect(formatOrderData(BigInt('20000000000'), BigInt('100000000000'), BigInt('100000000000'), '01')).toEqual(
-      '0x00c817a804000000000000000000000000e8764817000000000000000000000000e876481700000001',
+      '0x00c817a804000000000000000000000000e8764817000000000000000000000000e8764817000000000000000000000001',
     )
   })
 
@@ -140,14 +140,14 @@ describe('Test parser', () => {
           capacity: BigInt(24_667_575_757),
           sudtAmount: BigInt(1_501_460_607),
           orderAmount: BigInt(3_242_424_243),
-          price: BigInt(50_000_000_000),
+          price: BigInt(500_000_000_000_000_000_000),
           type: 1,
         },
         bidOrderInfo: {
           capacity: BigInt(30_200_000_000),
           sudtAmount: BigInt(0),
           orderAmount: BigInt(2_452_642_073),
-          price: BigInt(50_000_000_000),
+          price: BigInt(500_000_000_000_000_000_000),
           type: 0,
         },
       }
@@ -164,7 +164,7 @@ describe('Test parser', () => {
         orderAmount: BigInt(2_452_642_073),
         targetAmount: BigInt(2_452_642_073),
       })
-      expect(price).toBe(BigInt(50_000_000_000))
+      expect(price).toBe(BigInt(500_000_000_000_000_000_000))
     })
 
     it('perfect price for order amount', () => {
@@ -173,14 +173,14 @@ describe('Test parser', () => {
           capacity: BigInt(24_667_575_757),
           sudtAmount: BigInt(1_501_460_607),
           orderAmount: BigInt(3_242_424_240),
-          price: BigInt(50_000_000_000),
+          price: BigInt(500_000_000_000_000_000_000),
           type: 1,
         },
         bidOrderInfo: {
           capacity: BigInt(30_200_000_000),
           sudtAmount: BigInt(0),
           orderAmount: BigInt(2_452_642_073),
-          price: BigInt(50_000_000_000),
+          price: BigInt(500_000_000_000_000_000_000),
           type: 0,
         },
       }
@@ -197,23 +197,23 @@ describe('Test parser', () => {
         orderAmount: BigInt(2_452_642_073),
         targetAmount: BigInt(2_452_642_073),
       })
-      expect(price).toBe(BigInt(50_000_000_000))
+      expect(price).toBe(BigInt(500_000_000_000_000_000_000))
     })
 
-    it.only('decimal price', () => {
+    it('decimal price', () => {
       const fixture = {
         askOrderInfo: {
           capacity: BigInt(24_667_575_757),
           sudtAmount: BigInt(1_501_460_607),
           orderAmount: BigInt(3_242_424_240),
-          price: BigInt(5),
+          price: BigInt(50000000000),
           type: 1,
         },
         bidOrderInfo: {
           capacity: BigInt(30_200_000_000),
           sudtAmount: BigInt(0),
           orderAmount: BigInt(2_452_642_073),
-          price: BigInt(5),
+          price: BigInt(50000000000),
           type: 0,
         },
       }
@@ -230,7 +230,7 @@ describe('Test parser', () => {
         orderAmount: BigInt(2_000_000_000),
         targetAmount: BigInt(2_000_000_000),
       })
-      expect(price).toBe(BigInt(5))
+      expect(price).toBe(BigInt(50000000000))
     })
   })
 })

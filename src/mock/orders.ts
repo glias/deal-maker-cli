@@ -6,7 +6,7 @@ export const askOrderWithLowerPrice: Order = {
   tokenId: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
   blockNumber: 1,
   type: '01',
-  price: BigInt(10_000_000_000),
+  price: BigInt(100_000_000_000_000_000_000),
   orderAmount: BigInt(39_909_910_000),
   sudtAmount: BigInt(40_030_000_000),
   output: {
@@ -30,7 +30,7 @@ export const askOrderWithHigherPrice: Order = {
   tokenId: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
   blockNumber: 1,
   type: '01',
-  price: BigInt(50_000_000_000),
+  price: BigInt(500_000_000_000_000_000_000),
   orderAmount: BigInt(9_970_000_000),
   sudtAmount: BigInt(2_000_000_000),
   output: {
@@ -54,7 +54,7 @@ export const bidOrderWithLowerPrice: Order = {
   tokenId: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
   blockNumber: 1,
   type: '00',
-  price: BigInt(10_000_000_000),
+  price: BigInt(100_000_000_000_000_000_000),
   orderAmount: BigInt(10_000_000_000),
   sudtAmount: BigInt(0),
   output: {
@@ -78,7 +78,7 @@ export const bidOrderWithHigherPrice: Order = {
   tokenId: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
   blockNumber: 1,
   type: '00',
-  price: BigInt(50_000_000_000),
+  price: BigInt(500_000_000_000_000_000_000),
   orderAmount: BigInt(10_000_000_000),
   sudtAmount: BigInt(1_000),
   output: {
@@ -102,7 +102,7 @@ export const orderWithZeroAmount: Order = {
   tokenId: 'token_id_order_with_zero_amount',
   blockNumber: 2,
   type: '00',
-  price: BigInt(100),
+  price: BigInt(1_000_000_000_000),
   orderAmount: BigInt(0),
   sudtAmount: BigInt('1000'),
   output: {
@@ -126,7 +126,7 @@ export const orderWithWrongType: Order = {
   tokenId: 'token_id_order_with_zero_amount',
   blockNumber: 2,
   type: '02' as any,
-  price: BigInt(100),
+  price: BigInt(1_000_000_000_000),
   orderAmount: BigInt('1000'),
   sudtAmount: BigInt('1000'),
   output: {
@@ -150,7 +150,7 @@ export const orderWithAskButSudtAmountZero: Order = {
   tokenId: 'token_id_order_with_zero_amount',
   blockNumber: 2,
   type: '01',
-  price: BigInt(100),
+  price: BigInt(1_000_000_000_000),
   orderAmount: BigInt('1000'),
   sudtAmount: BigInt('0'),
   output: {
