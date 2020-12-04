@@ -12,7 +12,7 @@ export const WEB_UI_PORT = process.env.WEB_UI_PORT
 export const FEE = BigInt(3)
 export const FEE_RATIO = BigInt(1_000)
 export const SHANNONS_RATIO = BigInt(10 ** 8)
-export const ORDER_CELL_SIZE = BigInt(179)
+export const ORDER_CELL_SIZE = BigInt(187)
 export const PRICE_RATIO = BigInt(10 ** 20)
 export const ORDER_DATA_LENGTH = 100
 

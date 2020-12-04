@@ -3,7 +3,7 @@
     "valid bid order": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b73559458",
+          "capacity": "0x1ba3049c58",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -25,10 +25,10 @@
       },
       "expected": true
     },
-    "invalid bid order, capacity is not enough: { price: 1, orderAmount: 99700897300, capacity: 117899999991, type: 00 }": {
+    "invalid bid order, capacity is not enough: { price: 1, orderAmount: 99700897300, capacity: 118699105367, type: 00 }": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b73559457",
+          "capacity": "0x1ba3049c57",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
