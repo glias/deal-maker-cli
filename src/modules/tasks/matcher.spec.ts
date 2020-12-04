@@ -6,7 +6,7 @@ import { formatOrderData, MATCH_ORDERS_CELL_DEPS } from '../../utils'
 // TODO: fix test cases
 describe('Test Match', () => {
   const dealMakerCell: RawTransactionParams.Cell = {
-    data: '',
+    data: '0x',
     lock: { codeHash: '0x', hashType: 'data', args: '0x' },
     type: { codeHash: '0x', hashType: 'data', args: '0x' },
     capacity: '0x0',
