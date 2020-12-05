@@ -135,7 +135,9 @@ class TasksService {
           return false
         }
 
-        const dealMakerCell = dealMakerCells.sort((c1, c2) => Number(BigInt(c2.capacity) - BigInt(c1.capacity)))[0]
+        const dealMakerCell =
+          dealMakerCells.find(c => c.type) ||
+          dealMakerCells.sort((c1, c2) => Number(BigInt(c2.capacity) - BigInt(c1.capacity)))[0]
 
         const matcher = new Matcher(bidOrderList, askOrderList, dealMakerCell)
 
