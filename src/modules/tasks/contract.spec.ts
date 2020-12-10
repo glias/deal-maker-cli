@@ -6,8 +6,11 @@ import { OrderType } from '../orders/order.entity'
 type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
 
 describe('Test with validator', () => {
+  const FEE = BigInt(3)
+  const FEE_DECIMAL = BigInt(1000)
+  const PRICE_DECIMAL = BigInt(100000000000000000000)
   let matcher: Matcher
-  let originOrders: Array<{ info: OrderInfo }> = []
+  let originOrders: Array<{ info: OrderInfo; id: string }> = []
   describe('Partially Matched Bid', () => {
     beforeAll(() => {
       const bidOrder = {
@@ -52,10 +55,6 @@ describe('Test with validator', () => {
     })
 
     it('Should output partially matched bid and fully matched ask', () => {
-      const FEE = BigInt(3)
-      const FEE_DECIMAL = BigInt(1000)
-      const PRICE_DECIMAL = BigInt(10000000000)
-
       for (let i = 0; i < matcher.matchedOrderList.length; i++) {
         const inputOrder = originOrders[i].info
         const outputOrder = matcher.matchedOrderList[i].info
@@ -89,7 +88,7 @@ describe('Test with validator', () => {
       }
     })
   })
-  describe.skip('Partial Matched Ask', () => {
+  describe('Partial Matched Ask', () => {
     beforeAll(() => {
       const bidOrder = {
         id: '0x39780d830a6fc914acf3f6ef280ab21b9b6e894d00b402db6fd81ec50646354d-0x0',
@@ -133,10 +132,6 @@ describe('Test with validator', () => {
     })
 
     it('Should output partially matched ask and fully matched bid', () => {
-      const FEE = BigInt(3)
-      const FEE_DECIMAL = BigInt(1000)
-      const PRICE_DECIMAL = BigInt(10000000000)
-
       for (let i = 0; i < matcher.matchedOrderList.length; i++) {
         const inputOrder = originOrders[i].info
         const outputOrder = matcher.matchedOrderList[i].info

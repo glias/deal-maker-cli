@@ -149,6 +149,198 @@ describe('Test Match', () => {
         expect(Number(matcher.dealMakerSudtAmount)).toBe(66_000_000)
         expect(Number(matcher.dealMakerCapacityAmount)).toBe(660_000_000)
       })
+
+      describe('Skip bid order whose balance is not enough for cost and fee', () => {
+        const bidOrderToSkip = {
+          ...baseBidOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: `0x${(90269999999).toString(16)}`,
+            data: `${formatOrderData(
+              BigInt(0), // sudt 0
+              BigInt(10_000_000_000), // order amount 100
+              BigInt(900_000_000_000_000_000_000), // price amount 9
+              '00',
+            )}`,
+          }),
+        }
+        it('continue the loop if the bid order is not a partially matched one', () => {
+          expect.assertions(5)
+          const bidOrder = {
+            ...baseBidOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: `0x${(90270000000).toString(16)}`,
+              data: `${formatOrderData(
+                BigInt(0), // sudt 0
+                BigInt(10_000_000_000), // order amount 100
+                BigInt(900_000_000_000_000_000_000), // price amount 9
+                '00',
+              )}`,
+            }),
+          }
+
+          const askOrder = {
+            ...baseAskOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: '0x0',
+              data: `${formatOrderData(
+                BigInt(10_030_000_000), // sudt 100.3
+                BigInt(90_000_000_000), // order amount 900
+                BigInt(900_000_000_000_000_000_000), // 9
+                '01',
+              )}`,
+            }),
+          }
+          const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+          matcher.match()
+
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+        })
+
+        it('break the loop if the bid order is a partially matched one', () => {
+          expect.assertions(2)
+          const bidOrder = {
+            ...baseBidOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: `0x${(90270000000).toString(16)}`,
+              data: `${formatOrderData(
+                BigInt(0), // sudt 0
+                BigInt(10_000_000_000), // order amount 100
+                BigInt(900_000_000_000_000_000_000), // price amount 9
+                '00',
+              )}`,
+            }),
+          }
+
+          const askOrder = {
+            ...baseAskOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: '0x0',
+              data: `${formatOrderData(
+                BigInt(10_030_000_000), // sudt 100.3
+                BigInt(90_000_000_000), // order amount 900
+                BigInt(900_000_000_000_000_000_000), // 9
+                '01',
+              )}`,
+            }),
+          }
+          const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+          matcher.bidOrderList[0].part = true
+          matcher.match()
+          expect(matcher.matchedOrderList).toHaveLength(1)
+          expect(matcher.matchedOrderList[0].id).toBe(bidOrderToSkip.id)
+        })
+      })
+
+      describe('Skip ask order whose balance is not enough for cost and fee', () => {
+        const askOrderToSkip = {
+          ...baseAskOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: '0x0',
+            data: `${formatOrderData(
+              BigInt(10_029_999_999), // sudt 100.29999999
+              BigInt(90_000_000_000), // order amount 900
+              BigInt(900_000_000_000_000_000_000), // 9
+              '01',
+            )}`,
+          }),
+        }
+        it('continue the loop if the ask order is not a partially matched one', () => {
+          expect.assertions(5)
+          const bidOrder = {
+            ...baseBidOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: `0x${(90270000000).toString(16)}`,
+              data: `${formatOrderData(
+                BigInt(0), // sudt 0
+                BigInt(10_000_000_000), // order amount 100
+                BigInt(900_000_000_000_000_000_000), // price amount 9
+                '00',
+              )}`,
+            }),
+          }
+
+          const askOrder = {
+            ...baseAskOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: '0x0',
+              data: `${formatOrderData(
+                BigInt(10_030_000_000), // sudt 100.3
+                BigInt(90_000_000_000), // order amount 900
+                BigInt(900_000_000_000_000_000_000), // 9
+                '01',
+              )}`,
+            }),
+          }
+          const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+          matcher.match()
+
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+        })
+
+        it('break the loop if the ask order is a partially matched one', () => {
+          expect.assertions(2)
+          const bidOrder = {
+            ...baseBidOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: `0x${(90270000000).toString(16)}`,
+              data: `${formatOrderData(
+                BigInt(0), // sudt 0
+                BigInt(10_000_000_000), // order amount 100
+                BigInt(900_000_000_000_000_000_000), // price amount 9
+                '00',
+              )}`,
+            }),
+          }
+
+          const askOrder = {
+            ...baseAskOrder,
+            price: BigInt(900_000_000_000_000_000_000), // 9
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: '0x0',
+              data: `${formatOrderData(
+                BigInt(10_030_000_000), // sudt 100.3
+                BigInt(90_000_000_000), // order amount 900
+                BigInt(900_000_000_000_000_000_000), // 9
+                '01',
+              )}`,
+            }),
+          }
+          const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+          matcher.askOrderList[0].part = true
+          matcher.match()
+          expect(matcher.matchedOrderList).toHaveLength(1)
+          expect(matcher.matchedOrderList[0].id).toBe(askOrderToSkip.id)
+        })
+      })
     })
 
     describe('Partial match', () => {
@@ -161,7 +353,7 @@ describe('Test Match', () => {
             capacity: `0x${(120_360_000_000).toString(16)}`, // 1203.6 ckb
             data: `${formatOrderData(
               BigInt(0), // 0 sudt
-              BigInt(12_000_000_000), // 120 sudt order amount
+              BigInt(9_000_000_000), // 90 sudt order amount
               BigInt(1_000_000_000_000_000_000_000), // 10 price
               '00',
             )}`,
@@ -175,25 +367,107 @@ describe('Test Match', () => {
             capacity: '0x0', // 0 ckb
             data: `${formatOrderData(
               BigInt(10_030_000_000), // 100.3 sudt
-              BigInt(90_000_000_000), // 900 ckb order amount
+              BigInt(120_000_000_000), // 1200 ckb order amount
               BigInt(1_000_000_000_000_000_000_000), // 10 price
               '01',
             )}`,
           }),
         }
 
-        it('return correct capacity and sudt amount when no ask order left', () => {
+        it('return correct capacity and sudt amount when no bid order left', () => {
           expect.assertions(5)
           // traded 900 ckb and 90 sudt
           const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([90_000_000_000, 30_090_000_000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1_003_000_000, 9_000_000_000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 3_000_000_000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([30_090_000_000, 90_000_000_000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_000_000_000, 1_003_000_000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 30_000_000_000])
 
           expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
           expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+        })
+
+        describe('Skip bid order whose balance is not enough for cost and fee', () => {
+          const bidOrderToSkip = {
+            ...baseBidOrder,
+            price: BigInt(1_000_000_000_000_000_000_000), // 10
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: `0x${(90_269_999_999).toString(16)}`, // 902.69999999 ckb
+              data: `${formatOrderData(
+                BigInt(0), // 0 sudt
+                BigInt(9_000_000_000), // 90 sudt order amount
+                BigInt(1_000_000_000_000_000_000_000), // 10 price
+                '00',
+              )}`,
+            }),
+          }
+
+          it('continue the loop if the bid order is not a partially matched one', () => {
+            expect.assertions(5)
+            // traded 900 ckb and 90 sudt
+            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            matcher.match()
+
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([30_090_000_000, 90_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_000_000_000, 1_003_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 30_000_000_000])
+
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+          })
+
+          it('break the loop if the bid order is a partially matched one', () => {
+            expect.assertions(2)
+            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            matcher.bidOrderList[0].part = true
+            matcher.match()
+
+            expect(matcher.matchedOrderList).toHaveLength(1)
+            expect(matcher.matchedOrderList[0].id).toBe(bidOrderToSkip.id)
+          })
+        })
+
+        describe('Skip ask order whose balance is not enough for cost and fee', () => {
+          const askOrderToSkip = {
+            ...baseAskOrder,
+            price: BigInt(1_000_000_000_000_000_000_000), // 10
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: '0x0', // 0 ckb
+              data: `${formatOrderData(
+                BigInt(9_026_999_999), // 90.26999999 sudt
+                BigInt(120_000_000_000), // 1200 ckb order amount
+                BigInt(1_000_000_000_000_000_000_000), // 10 price
+                '01',
+              )}`,
+            }),
+          }
+
+          it('continue the loop if the ask order is not a partially matched one', () => {
+            expect.assertions(5)
+            // traded 900 ckb and 90 sudt
+            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            matcher.match()
+
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([30_090_000_000, 90_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_000_000_000, 1_003_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 30_000_000_000])
+
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+          })
+
+          it('break the loop if the ask order is a partially matched one', () => {
+            expect.assertions(2)
+            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            matcher.askOrderList[0].part = true
+            matcher.match()
+
+            expect(matcher.matchedOrderList).toHaveLength(1)
+            expect(matcher.matchedOrderList[0].id).toBe(askOrderToSkip.id)
+          })
         })
       })
 
@@ -239,6 +513,87 @@ describe('Test Match', () => {
 
           expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
           expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+        })
+
+        describe('Skip bid order whose balance is not enough for cost and fee', () => {
+          const bidOrderToSkip = {
+            ...baseBidOrder,
+            price: BigInt(1_000_000_000_000_000_000_000), // 10
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: `0x${(90_269_999_999).toString(16)}`, // 902.69999999 ckb
+              data: `${formatOrderData(
+                BigInt(0), // 0 sudt
+                BigInt(12_000_000_000), // 120 sudt order amount
+                BigInt(1_000_000_000_000_000_000_000), // 10 price
+                '00',
+              )}`,
+            }),
+          }
+
+          it('continue the loop if the bid order is not a partially matched one', () => {
+            expect.assertions(5)
+            // traded 900 ckb and 90 sudt
+            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            matcher.match()
+
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([90_000_000_000, 30_090_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1_003_000_000, 9_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 3_000_000_000])
+
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+          })
+
+          it('break the loop if the bid order is a partially matched one', () => {
+            expect.assertions(2)
+            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            matcher.bidOrderList[0].part = true
+            matcher.match()
+
+            expect(matcher.matchedOrderList).toHaveLength(1)
+            expect(matcher.matchedOrderList[0].id).toBe(bidOrderToSkip.id)
+          })
+        })
+        describe('Skip ask order whose balance is not enough for cost and fee', () => {
+          const askOrderToSkip = {
+            ...baseAskOrder,
+            price: BigInt(1_000_000_000_000_000_000_000), // 10
+            output: JSON.stringify({
+              ...baseScripts,
+              capacity: '0x0', // 0 ckb
+              data: `${formatOrderData(
+                BigInt(9_026_999_999), // 90.26999999 sudt
+                BigInt(90_000_000_000), // 900 ckb order amount
+                BigInt(1_000_000_000_000_000_000_000), // 10 price
+                '01',
+              )}`,
+            }),
+          }
+
+          it('continue the loop if the ask order is not a partially matched one', () => {
+            expect.assertions(5)
+            // traded 900 ckb and 90 sudt
+            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            matcher.match()
+
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([90_000_000_000, 30_090_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1_003_000_000, 9_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 3_000_000_000])
+
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+          })
+
+          it('break the loop if the ask order is a partially matched one', () => {
+            expect.assertions(2)
+            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            matcher.askOrderList[0].part = true
+            matcher.match()
+
+            expect(matcher.matchedOrderList).toHaveLength(1)
+            expect(matcher.matchedOrderList[0].id).toBe(askOrderToSkip.id)
+          })
         })
       })
 
@@ -449,6 +804,123 @@ describe('Test Match', () => {
 
         expect(Number(matcher.dealMakerSudtAmount)).toBe(36000000)
         expect(Number(matcher.dealMakerCapacityAmount)).toBe(360000000)
+      })
+    })
+
+    describe('Skip ask order whose order amount is 0', () => {
+      it('Skip 1st ask order', () => {
+        expect.assertions(5)
+        const bidOrder = {
+          ...baseBidOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: `0x${(90270000000).toString(16)}`,
+            data: `${formatOrderData(
+              BigInt(0), // sudt 0
+              BigInt(10_000_000_000), // order amount 100
+              BigInt(900_000_000_000_000_000_000), // price amount 9
+              '00',
+            )}`,
+          }),
+        }
+
+        const askOrder_1 = {
+          ...baseAskOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: '0x0',
+            data: `${formatOrderData(
+              BigInt(10_030_000_000), // sudt 100.3
+              BigInt(0), // order amount 0
+              BigInt(900_000_000_000_000_000_000), // 9
+              '01',
+            )}`,
+          }),
+        }
+        const askOrder_2 = {
+          ...baseAskOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: '0x0',
+            data: `${formatOrderData(
+              BigInt(10_030_000_000), // sudt 100.3
+              BigInt(90_000_000_000), // order amount 900
+              BigInt(900_000_000_000_000_000_000), // 9
+              '01',
+            )}`,
+          }),
+        }
+        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        matcher.match()
+
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+      })
+    })
+
+    describe('Skip bid order whose order amount is 0', () => {
+      it('Skip 1st bid order', () => {
+        expect.assertions(5)
+        const bidOrder_1 = {
+          ...baseBidOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: `0x${(90270000000).toString(16)}`,
+            data: `${formatOrderData(
+              BigInt(0), // sudt 0
+              BigInt(0), // order amount 0
+              BigInt(900_000_000_000_000_000_000), // price amount 9
+              '00',
+            )}`,
+          }),
+        }
+
+        const bidOrder_2 = {
+          ...baseBidOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: `0x${(90270000000).toString(16)}`,
+            data: `${formatOrderData(
+              BigInt(0), // sudt 0
+              BigInt(10_000_000_000), // order amount 100
+              BigInt(900_000_000_000_000_000_000), // price amount 9
+              '00',
+            )}`,
+          }),
+        }
+
+        const askOrder = {
+          ...baseAskOrder,
+          price: BigInt(900_000_000_000_000_000_000), // 9
+          output: JSON.stringify({
+            ...baseScripts,
+            capacity: '0x0',
+            data: `${formatOrderData(
+              BigInt(10_030_000_000), // sudt 100.3
+              BigInt(90_000_000_000), // order amount 900
+              BigInt(900_000_000_000_000_000_000), // 9
+              '01',
+            )}`,
+          }),
+        }
+        const matcher = new Matcher([bidOrder_1, bidOrder_2], [askOrder], dealMakerCell)
+        matcher.match()
+
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
       })
     })
   })

@@ -100,7 +100,9 @@ class OrderRepository extends Repository<Order> {
         }
       }
     } catch (err) {
+      /* istanbul ignore next */
       logger.warn(`${cell.id}-${err.message}`)
+      /* istanbul ignore next */
       return true
     }
   }
