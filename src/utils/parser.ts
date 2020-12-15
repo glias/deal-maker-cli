@@ -135,8 +135,8 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: bidOrderInfo.sudtAmount + bidOrderAmount, // target amount in sudt
   }
 
-  const askCostAmount = (askOrderInfo.orderAmount * PRICE_RATIO) / price // sudt
-  const askOrderAmount = (askCostAmount * price) / PRICE_RATIO // ckb
+  const askOrderAmount = (((askOrderInfo.orderAmount * PRICE_RATIO) / price) * price) / PRICE_RATIO
+  const askCostAmount = (askOrderAmount * PRICE_RATIO) / price
 
   const askAmount = {
     costAmount: askCostAmount, // cost sudt
