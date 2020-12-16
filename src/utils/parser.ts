@@ -125,8 +125,9 @@ type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', big
 export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo) => {
   const price = (bidOrderInfo.price + askOrderInfo.price) / BigInt(2)
 
-  const bidCostAmount = (price * bidOrderInfo.orderAmount) / PRICE_RATIO // cost capacity
-  const bidOrderAmount = (bidCostAmount * PRICE_RATIO) / price // sudt
+  let bidOrderAmount = (((bidOrderInfo.orderAmount * PRICE_RATIO) / price) * price) / PRICE_RATIO // sudt
+  const bidCostAmount = (bidOrderAmount * price) / PRICE_RATIO // ckb
+  bidOrderAmount = (bidCostAmount * PRICE_RATIO) / price
 
   const bidAmount = {
     costAmount: bidCostAmount, // cost capacity
