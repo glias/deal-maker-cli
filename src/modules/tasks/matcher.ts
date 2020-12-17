@@ -106,12 +106,12 @@ export default class {
 
       const { bidAmount, askAmount } = formatDealInfo(bidOrder.info, askOrder.info)
 
-      if (askAmount.orderAmount === BigInt(0)) {
+      if (!askAmount.orderAmount || !askAmount.costAmount) {
         this.askOrderList.shift()
         continue
       }
 
-      if (bidAmount.orderAmount === BigInt(0)) {
+      if (!bidAmount.orderAmount || !bidAmount.costAmount) {
         this.bidOrderList.shift()
         continue
       }

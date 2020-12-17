@@ -257,7 +257,7 @@ describe('Test parser', () => {
           type: 1,
         },
       }
-      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
       expect((askAmount.orderAmount * PRICE_RATIO) / askAmount.costAmount).toBe(fixture.askOrderInfo.price)
       expect((bidAmount.costAmount * PRICE_RATIO) / bidAmount.orderAmount).toBe(fixture.bidOrderInfo.price)
     })

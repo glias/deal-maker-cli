@@ -145,5 +145,13 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     orderAmount: askOrderAmount, // order amount in capacity
     targetAmount: askOrderInfo.capacity + askOrderAmount, // target capacity
   }
+
+  if (askCostAmount && (askOrderAmount * PRICE_RATIO) / askCostAmount < askOrderInfo.price) {
+    askAmount.orderAmount = BigInt(0)
+    askAmount.costAmount = BigInt(0)
+  } else if (bidOrderAmount && (bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidOrderInfo.price) {
+    bidAmount.orderAmount = BigInt(0)
+    bidAmount.costAmount = BigInt(0)
+  }
   return { askAmount, bidAmount, price }
 }
