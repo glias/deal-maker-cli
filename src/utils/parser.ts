@@ -121,16 +121,31 @@ export const parsePlaceOrderTx = (inputs: Orders, outputs: Orders) => {
   }
 }
 
+const gcd = (a: bigint, b: bigint): bigint => {
+  if (!b) {
+    return a
+  }
+
+  return gcd(b, a % b)
+}
+
+const findBestDeal = (ckbAmount: bigint, price: bigint) => {
+  const s = gcd(price, PRICE_RATIO)
+  const p0 = price / s
+  const n0 = PRICE_RATIO / s
+  const sudt = n0 * (ckbAmount / p0)
+  const ckb = (sudt * price) / PRICE_RATIO
+  return { ckb, sudt }
+}
+
 type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
 export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo) => {
   const price = (bidOrderInfo.price + askOrderInfo.price) / BigInt(2)
-  const rearZero = `${price}`.match(/0*$/)![0].length
-  const decimal = rearZero >= 20 ? 0 : 20 - rearZero
-  const priceDecimal = BigInt(10 ** decimal)
 
-  let bidCostAmount = ((bidOrderInfo.orderAmount * price) / PRICE_RATIO / priceDecimal) * priceDecimal // ckb
-  const bidOrderAmount = ((bidCostAmount * PRICE_RATIO) / priceDecimal / price) * priceDecimal
-  bidCostAmount = (bidOrderAmount * price) / PRICE_RATIO
+  const { sudt: bidOrderAmount, ckb: bidCostAmount } = findBestDeal(
+    (bidOrderInfo.orderAmount * price) / PRICE_RATIO,
+    price,
+  )
 
   const bidAmount = {
     costAmount: bidCostAmount, // cost capacity
@@ -139,9 +154,7 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: bidOrderInfo.sudtAmount + bidOrderAmount, // target amount in sudt
   }
 
-  const askOrderAmount =
-    (((askOrderInfo.orderAmount * PRICE_RATIO) / priceDecimal / price) * price * priceDecimal) / PRICE_RATIO
-  const askCostAmount = (askOrderAmount * PRICE_RATIO) / price
+  const { sudt: askCostAmount, ckb: askOrderAmount } = findBestDeal(askOrderInfo.orderAmount, price)
 
   const askAmount = {
     costAmount: askCostAmount, // cost sudt
@@ -150,10 +163,18 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: askOrderInfo.capacity + askOrderAmount, // target capacity
   }
 
-  if (askCostAmount && (askOrderAmount * PRICE_RATIO) / askCostAmount < askOrderInfo.price) {
+  if (
+    askCostAmount &&
+    ((askOrderAmount * PRICE_RATIO) / askCostAmount < askOrderInfo.price ||
+      (askOrderAmount * PRICE_RATIO) / askCostAmount > bidOrderInfo.price)
+  ) {
     askAmount.orderAmount = BigInt(0)
     askAmount.costAmount = BigInt(0)
-  } else if (bidOrderAmount && (bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidOrderInfo.price) {
+  } else if (
+    bidOrderAmount &&
+    ((bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidOrderInfo.price ||
+      (bidCostAmount * PRICE_RATIO) / bidOrderAmount < askOrderInfo.price)
+  ) {
     bidAmount.orderAmount = BigInt(0)
     bidAmount.costAmount = BigInt(0)
   }

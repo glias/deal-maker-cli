@@ -205,8 +205,7 @@ describe('Test parser', () => {
       expect(price).toBe(BigInt(500_000_000_000_000_000_000))
     })
 
-    it.skip('decimal price', () => {
-      // TODO: any better solution?
+    it('decimal price', () => {
       const fixture = {
         askOrderInfo: {
           capacity: BigInt(24_667_575_757),
@@ -259,8 +258,10 @@ describe('Test parser', () => {
         },
       }
       const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
-      expect((askAmount.orderAmount * PRICE_RATIO) / askAmount.costAmount).toBe(fixture.askOrderInfo.price)
-      expect((bidAmount.costAmount * PRICE_RATIO) / bidAmount.orderAmount).toBe(fixture.bidOrderInfo.price)
+      expect(askAmount.orderAmount * PRICE_RATIO).toBeGreaterThanOrEqual(
+        fixture.askOrderInfo.price * askAmount.costAmount,
+      )
+      expect(bidAmount.costAmount * PRICE_RATIO).toBeLessThanOrEqual(fixture.bidOrderInfo.price * bidAmount.orderAmount)
     })
 
     it('omit some pricision on order amount of ask order', () => {
@@ -281,8 +282,10 @@ describe('Test parser', () => {
         },
       }
       const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
-      expect((askAmount.orderAmount * PRICE_RATIO) / askAmount.costAmount).toBe(fixture.askOrderInfo.price)
-      expect((bidAmount.costAmount * PRICE_RATIO) / bidAmount.orderAmount).toBe(fixture.bidOrderInfo.price)
+      expect(askAmount.orderAmount * PRICE_RATIO).toBeGreaterThanOrEqual(
+        fixture.askOrderInfo.price * askAmount.costAmount,
+      )
+      expect(bidAmount.costAmount * PRICE_RATIO).toBeLessThanOrEqual(fixture.bidOrderInfo.price * bidAmount.orderAmount)
     })
 
     it('edge case of trivial price', () => {
@@ -303,8 +306,10 @@ describe('Test parser', () => {
         },
       }
       const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
-      expect((askAmount.orderAmount * PRICE_RATIO) / askAmount.costAmount).toBe(fixture.askOrderInfo.price)
-      expect((bidAmount.costAmount * PRICE_RATIO) / bidAmount.orderAmount).toBe(fixture.bidOrderInfo.price)
+      expect(askAmount.orderAmount * PRICE_RATIO).toBeGreaterThanOrEqual(
+        fixture.askOrderInfo.price * askAmount.costAmount,
+      )
+      expect(bidAmount.costAmount * PRICE_RATIO).toBeLessThanOrEqual(fixture.bidOrderInfo.price * bidAmount.orderAmount)
     })
   })
 })
