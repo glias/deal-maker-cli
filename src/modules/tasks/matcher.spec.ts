@@ -648,19 +648,19 @@ describe('Test Match', () => {
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([
-            107999999994,
-            94999999994,
-            27051000014,
+            107999999975,
+            94999999575,
+            27051000453,
           ])
           expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([
-            633473685,
-            257179489,
-            21112010794,
+            633473687,
+            257179531,
+            21112010750,
           ])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([6, 6, 1887989206])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([25, 425, 1887989250])
 
           expect(Number(matcher.dealMakerSudtAmount)).toBe(63336032)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(608999998)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(608999997)
         })
       })
 
