@@ -5,11 +5,13 @@ import { Indexer, CellCollector } from '@ckb-lumos/indexer'
 import { CronJob } from 'cron'
 import { modules } from '../../container'
 import OrdersService from '../orders'
+import LocksService from '../locks'
 import ConfigService from '../config'
 import {
   logger,
   startIndexer,
   scanOrderCells,
+  scanPlaceOrderLocks,
   subscribeOrderCell,
   checkPendingDeals,
   signAndSendTransaction,
@@ -26,10 +28,13 @@ const logTag = `\x1b[35m[Tasks Service]\x1b[0m`
 class TasksService {
   readonly #ordersService: OrdersService
   readonly #configService: ConfigService
+  readonly #locksService: LocksService
   #indexer!: Indexer
+  #isScanningPlaceOrder = false
   readonly #schedule = {
     match: '*/5 * * * * *',
     checkPending: '*/10 * * * * *',
+    syncLocks: '*/10 * * * * *',
   }
   #info = (msg: string) => {
     logger.info(`${logTag}: ${msg}`)
@@ -41,9 +46,11 @@ class TasksService {
   constructor(
     @inject(new LazyServiceIdentifer(() => modules[OrdersService.name])) ordersService: OrdersService,
     @inject(new LazyServiceIdentifer(() => modules[ConfigService.name])) configService: ConfigService,
+    @inject(new LazyServiceIdentifer(() => modules[LocksService.name])) locksService: LocksService,
   ) {
     this.#ordersService = ordersService
     this.#configService = configService
+    this.#locksService = locksService
   }
 
   start = async () => {
@@ -52,6 +59,7 @@ class TasksService {
     this.subscribeOrderCell()
     new CronJob(this.#schedule.match, this.matchOrders, null, true)
     new CronJob(this.#schedule.checkPending, this.checkPendingDeals, null, true)
+    new CronJob(this.#schedule.syncLocks, this.scanPlaceOrderLocks, null, true)
   }
 
   readonly startIndexer = async () => {
@@ -62,6 +70,32 @@ class TasksService {
 
   readonly scanOrderCells = async () => {
     return scanOrderCells(this.#indexer, this.#ordersService.flushOrders)
+  }
+
+  readonly scanPlaceOrderLocks = async () => {
+    if (this.#isScanningPlaceOrder) {
+      return
+    }
+    this.#isScanningPlaceOrder = true
+    const fromBlock = await this.#locksService.getBlockNumber()
+    const toBlock = await this.#indexer
+      .tip()
+      .then(res => +res.block_number)
+      .catch(() => 0)
+    const nodeUrl = await this.#configService.getConfig().then(config => config.remoteUrl)
+    try {
+      const lockList = await scanPlaceOrderLocks(this.#indexer, {
+        fromBlock: '0x' + (+fromBlock).toString(16),
+        toBlock: '0x' + toBlock.toString(16),
+        nodeUrl,
+      })
+      await this.#locksService.addLockList(lockList)
+      await this.#locksService.setBlockNumber(toBlock.toString())
+    } catch (err) {
+      console.error(err)
+    } finally {
+      this.#isScanningPlaceOrder = false
+    }
   }
 
   readonly subscribeOrderCell = async () => {

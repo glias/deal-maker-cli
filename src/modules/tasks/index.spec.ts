@@ -7,6 +7,8 @@ const mockSubscribeOrderCell = jest.fn()
 const mockCheckPendingDeals = jest.fn()
 const mockTokenIdList = ['0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902']
 
+const mockScanPlaceOrderLocks = jest.fn().mockResolvedValue([])
+
 const mockGetBidOrders = jest.fn().mockResolvedValue([])
 const mockGetAskOrders = jest.fn().mockResolvedValue([])
 const mockGetPendingDeals = jest.fn().mockResolvedValue([])
@@ -51,6 +53,7 @@ jest.setMock('../../utils/', {
   scanOrderCells: mockScanOrderCells,
   subscribeOrderCell: mockSubscribeOrderCell,
   checkPendingDeals: mockCheckPendingDeals,
+  scanPlaceOrderLocks: mockScanPlaceOrderLocks,
   SUDT_TYPE_ARGS_LIST: mockTokenIdList,
 })
 
@@ -59,6 +62,7 @@ import { injectable } from 'inversify'
 import TasksService from '.'
 import ConfigService from '../config'
 import OrdersService from '../orders'
+import LocksService from '../locks'
 import { container, modules } from '../../container'
 import { DealStatus } from '../orders/deal.entity'
 import { pendingDeal } from '../../mock'
@@ -84,10 +88,18 @@ class MockOrdersService {
   saveDeal = mockSaveDeal
 }
 
+@injectable()
+class MockLocksService {
+  getBlockNumber = jest.fn().mockReturnValue('0')
+  setBlockNumber = jest.fn().mockResolvedValue(undefined)
+  addLockList = jest.fn().mockResolvedValue(undefined)
+}
+
 describe('Test tasks module', () => {
   let tasksService: TasksService
   let mockConfigService: MockConfigService
   let mockOrdersService: MockOrdersService
+  let mockLocksService: MockLocksService
   let scanOrderCells
   let startIndexer
   let subscribeOrderCell
@@ -95,9 +107,11 @@ describe('Test tasks module', () => {
   beforeAll(async () => {
     modules[ConfigService.name] = Symbol(ConfigService.name)
     modules[OrdersService.name] = Symbol(OrdersService.name)
+    modules[LocksService.name] = Symbol(LocksService.name)
     modules[TasksService.name] = Symbol(TasksService.name)
     container.bind(modules[ConfigService.name]).to(MockConfigService)
     container.bind(modules[OrdersService.name]).to(MockOrdersService)
+    container.bind(modules[LocksService.name]).to(MockLocksService)
     container.bind(modules[TasksService.name]).to(TasksService)
 
     tasksService = container.get(modules[TasksService.name])
@@ -123,7 +137,7 @@ describe('Test tasks module', () => {
     })
 
     it('should start a cron job', () => {
-      expect(mockCronConstructor).toBeCalledTimes(2)
+      expect(mockCronConstructor).toBeCalledTimes(3)
     })
   })
 
