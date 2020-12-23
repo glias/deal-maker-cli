@@ -26,8 +26,6 @@ describe('Test orders service', () => {
   let ordersService: OrdersService
   let orderRepository: OrderRepository
   let dealRepository: DealRepository
-  let rawTx: CKBComponents.RawTransactionToSign
-  const mockIndexer: any = jest.fn()
 
   beforeEach(async () => {
     connection = await createConnection('test')

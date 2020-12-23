@@ -3,6 +3,7 @@
  */
 import Matcher from './matcher'
 import { OrderType } from '../orders/order.entity'
+import { formatOrderData } from '../../utils'
 type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
 
 describe('Test with validator', () => {
@@ -19,8 +20,20 @@ describe('Test with validator', () => {
         type: 0,
         price: BigInt(50000000000),
         blockNumber: 526420,
-        output:
-          '{"capacity":"0x7080f6e00","lock":{"codeHash":"0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500","hashType":"type","args":"0x9fe3c3ef6b4a3415d58799c29b84ba05611e2944aedb39caa21e89ca93b03f85"},"type":{"codeHash":"0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419","hashType":"data","args":"0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947"},"data":"0x000000000000000000000000000000001959309200000000000000000000000000743ba40b00000000"}',
+        output: JSON.stringify({
+          capacity: '0x7080f6e00',
+          lock: {
+            codeHash: '0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500',
+            hashType: 'type',
+            args: '0x9fe3c3ef6b4a3415d58799c29b84ba05611e2944aedb39caa21e89ca93b03f85',
+          },
+          type: {
+            codeHash: '0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419',
+            hashType: 'data',
+            args: '0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947',
+          },
+          data: formatOrderData(BigInt('0'), BigInt('2452642073'), BigInt('50000000000'), '00'),
+        }),
       }
       const askOrder = {
         id: '0x07dee385d00d2eab3b5f0bffde5f97b6d103514352f3bc169dd0a13b16bc29d9-0x2',
@@ -28,8 +41,20 @@ describe('Test with validator', () => {
         type: 1,
         price: BigInt(50000000000),
         blockNumber: 516279,
-        output:
-          '{"capacity":"0x5be4d55cd","lock":{"codeHash":"0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500","hashType":"type","args":"0xc07b294df4873625d2c97d904a6cd91ff68c8d68e6b343b0b2490e15d79c094f"},"type":{"codeHash":"0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419","hashType":"data","args":"0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947"},"data":"0x7f787e59000000000000000000000000b37743c100000000000000000000000000743ba40b00000001"}',
+        output: JSON.stringify({
+          capacity: '0x5be4d55cd',
+          lock: {
+            codeHash: '0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500',
+            hashType: 'type',
+            args: '0xc07b294df4873625d2c97d904a6cd91ff68c8d68e6b343b0b2490e15d79c094f',
+          },
+          type: {
+            codeHash: '0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419',
+            hashType: 'data',
+            args: '0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947',
+          },
+          data: formatOrderData(BigInt('1501460607'), BigInt('3242424243'), BigInt('18446744123709551616'), '01'),
+        }),
       }
       const dealMakerCell = {
         data: '0xde2d780b000000000000000000000000',
@@ -96,8 +121,20 @@ describe('Test with validator', () => {
         type: 0,
         price: BigInt(50000000000),
         blockNumber: 526420,
-        output:
-          '{"capacity":"0x7080f6e00","lock":{"codeHash":"0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500","hashType":"type","args":"0x9fe3c3ef6b4a3415d58799c29b84ba05611e2944aedb39caa21e89ca93b03f85"},"type":{"codeHash":"0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419","hashType":"data","args":"0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947"},"data":"0x000000000000000000000000000000001959309200000000000000000000000000743ba40b00000000"}',
+        output: JSON.stringify({
+          capacity: '0x7080f6e00',
+          lock: {
+            codeHash: '0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500',
+            hashType: 'type',
+            args: '0x9fe3c3ef6b4a3415d58799c29b84ba05611e2944aedb39caa21e89ca93b03f85',
+          },
+          type: {
+            codeHash: '0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419',
+            hashType: 'data',
+            args: '0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947',
+          },
+          data: formatOrderData(BigInt('0'), BigInt('2452642073'), BigInt('50000000000'), '00'),
+        }),
       }
       const askOrder = {
         id: '0x07dee385d00d2eab3b5f0bffde5f97b6d103514352f3bc169dd0a13b16bc29d9-0x2',
@@ -105,8 +142,20 @@ describe('Test with validator', () => {
         type: 1,
         price: BigInt(50000000000),
         blockNumber: 516279,
-        output:
-          '{"capacity":"0x5be4d55cd","lock":{"codeHash":"0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500","hashType":"type","args":"0xc07b294df4873625d2c97d904a6cd91ff68c8d68e6b343b0b2490e15d79c094f"},"type":{"codeHash":"0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419","hashType":"data","args":"0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947"},"data":"0x7f787e59000000000000000000000000b37743c100000000000000000000000000743ba40b00000001"}',
+        output: JSON.stringify({
+          capacity: '0x5be4d55cd',
+          lock: {
+            codeHash: '0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500',
+            hashType: 'type',
+            args: '0xc07b294df4873625d2c97d904a6cd91ff68c8d68e6b343b0b2490e15d79c094f',
+          },
+          type: {
+            codeHash: '0xe1e354d6d643ad42724d40967e334984534e0367405c5ae42a9d7d63d77df419',
+            hashType: 'data',
+            args: '0x32e555f3ff8e135cece1351a6a2971518392c1e30375c1e006ad0ce8eac07947',
+          },
+          data: formatOrderData(BigInt('1501460607'), BigInt('3242424243'), BigInt('18446744123709551616'), '01'),
+        }),
       }
       const dealMakerCell = {
         data: '0xde2d780b000000000000000000000000',

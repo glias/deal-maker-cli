@@ -1,5 +1,6 @@
 import { PRICE_RATIO } from './conts'
 import { formatOrderData, parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo } from './parser'
+
 describe('Test parser', () => {
   it('parse order data', () => {
     const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b000000000000000000000001'
