@@ -3,7 +3,6 @@ import { OrderType } from '../modules/orders/order.entity'
 import { PRICE_RATIO } from './conts'
 
 /**
- *
  * @param rawHexString hex string without 0x prefix
  */
 export const readBigUInt128LE = (rawHexString: string) => {
@@ -11,18 +10,52 @@ export const readBigUInt128LE = (rawHexString: string) => {
   return buf.reverse().toString('hex')
 }
 
+const parsePrice = (price: string) => {
+  let effect = BigInt(`0x${price.substr(0, 16)}`)
+  const e = +`0x${price.slice(16)}`
+  const view = new DataView(new ArrayBuffer(1))
+  view.setUint8(0, e)
+  let exponent = BigInt(view.getInt8(0))
+
+  const MAX_EFFECT = BigInt('0xffffffffffffffff')
+  while (effect * BigInt(10) < MAX_EFFECT) {
+    effect = effect * BigInt(10)
+    exponent -= BigInt(1)
+  }
+  return { effect, exponent }
+}
+
+const encodePrice = (price: Record<'effect' | 'exponent', bigint>) => {
+  let { effect, exponent } = price
+  const offset = `${effect}`.match(/0*$/)![0].length
+  effect = effect / BigInt(10 ** offset)
+  exponent += BigInt(offset)
+
+  const view = new DataView(new ArrayBuffer(1))
+  view.setInt8(0, Number(exponent))
+  const e = +view.getUint8(0)
+  return `${effect.toString(16).padStart(16, '0')}${e.toString(16).padStart(2, '0')}`
+}
+
 export const parseOrderData = (
   data: string,
-): Record<'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: '00' | '01' } => {
+): Record<'sudtAmount' | 'orderAmount', bigint> & {
+  type: '00' | '01'
+  version: '01'
+  price: Record<'effect' | 'exponent', bigint>
+} => {
   const sudtAmount = data.slice(2, 34)
-  const orderAmount = data.slice(34, 66)
-  const price = data.slice(66, 98)
-  const type = data.slice(98, 100) as '00' | '01'
+  const version = data.slice(34, 36) as '01'
+  const orderAmount = data.slice(36, 68)
+  const price = data.slice(68, 86)
+  const type = data.slice(86, 88) as '00' | '01'
+
   return {
+    version,
     sudtAmount: BigInt('0x' + readBigUInt128LE(sudtAmount)),
     orderAmount: BigInt('0x' + readBigUInt128LE(orderAmount)),
-    price: BigInt('0x' + readBigUInt128LE(price)),
     type,
+    price: parsePrice(price),
   }
 }
 
@@ -55,8 +88,10 @@ export const bigIntToUint128Le = (u128: bigint) => {
   return `${buf.toString('hex')}`
 }
 
-export const formatOrderData = (currentSudtAmount: bigint, orderAmount: bigint, price: bigint, type: '00' | '01') => {
-  return `0x${bigIntToUint128Le(currentSudtAmount)}${bigIntToUint128Le(orderAmount)}${bigIntToUint128Le(price)}${type}`
+export const encodeOrderData = (data: ReturnType<typeof parseOrderData>) => {
+  return `0x${bigIntToUint128Le(data.sudtAmount)}${data.version}${bigIntToUint128Le(data.orderAmount)}${encodePrice(
+    data.price,
+  )}${data.type}`
 }
 
 type Order = ReturnType<typeof parseOrderData> & { capacity: bigint }

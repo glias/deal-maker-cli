@@ -1,19 +1,37 @@
 import { PRICE_RATIO } from './conts'
-import { formatOrderData, parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo } from './parser'
+import { parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo, encodeOrderData } from './parser'
 
 describe('Test parser', () => {
   it('parse order data', () => {
-    const DATA = '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b000000000000000000000001'
+    const fixture = {
+      version: '01',
+      sudtAmount: '00743ba40b0000000000000000000000',
+      orderAmount: '00e87648170000000000000000000000',
+      price: '00000000000000050a',
+      type: '01',
+    }
+    const DATA = `0x${fixture.sudtAmount}${fixture.version}${fixture.orderAmount}${fixture.price}${fixture.type}`
 
     expect(parseOrderData(DATA)).toEqual({
       sudtAmount: BigInt(50000000000),
       orderAmount: BigInt(100000000000),
-      price: BigInt(50000000000),
+      price: {
+        effect: BigInt('5000000000000000000'),
+        exponent: BigInt(-8),
+      },
       type: '01',
+      version: '01',
     })
   })
 
   it('parse order cell', () => {
+    const data = {
+      version: '01',
+      sudtAmount: '00743ba40b0000000000000000000000',
+      orderAmount: '00e87648170000000000000000000000',
+      price: '00000000000000050a',
+      type: '01',
+    }
     const CELL = {
       cell_output: {
         capacity: '0x12a05f2000',
@@ -34,23 +52,37 @@ describe('Test parser', () => {
       },
       block_hash: '0xaaeee4a93a1d79ccdf50f9e2e6c688f9d935bb8c21aeaf2c09508f8070b1bd89',
       block_number: '0x13',
-      data: '0x00743ba40b000000000000000000000000e8764817000000000000000000000000743ba40b000000000000000000000001',
+      data: `0x${data.sudtAmount}${data.version}${data.orderAmount}${data.price}${data.type}`,
     }
     expect(parseOrderCell(CELL as any)).toEqual({
       id: `${CELL.out_point.tx_hash}-${CELL.out_point.index}`,
       tokenId: CELL.cell_output.type.args,
       blockNumber: +CELL.block_number,
       type: '01',
-      price: BigInt(50000000000),
+      price: {
+        effect: BigInt('5000000000000000000'),
+        exponent: BigInt(-8),
+      },
       orderAmount: BigInt(100000000000),
       sudtAmount: BigInt(50000000000),
       output: { ...CELL.cell_output, data: CELL.data },
     })
   })
 
-  it('format order data', () => {
-    expect(formatOrderData(BigInt('20000000000'), BigInt('100000000000'), BigInt('100000000000'), '01')).toEqual(
-      '0x00c817a804000000000000000000000000e8764817000000000000000000000000e8764817000000000000000000000001',
+  it('encode order data', () => {
+    const fixture = {
+      sudtAmount: BigInt('20000000000'),
+      orderAmount: BigInt('100000000000'),
+      version: '01' as '01',
+      price: {
+        effect: BigInt('10000000000000000000'),
+        exponent: BigInt(-9),
+      },
+      type: '01' as '00' | '01',
+    }
+
+    expect(encodeOrderData(fixture)).toBe(
+      '0x00c817a80400000000000000000000000100e8764817000000000000000000000000000000000000010a01',
     )
   })
 
