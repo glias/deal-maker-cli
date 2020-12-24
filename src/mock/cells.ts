@@ -1,5 +1,5 @@
 import { Cell } from '@ckb-lumos/base'
-import { formatOrderData } from '../utils'
+import { encodeOrderData } from '../utils'
 export const bidCell: Cell = {
   cell_output: {
     capacity: '0x12a05f2000',
@@ -20,7 +20,16 @@ export const bidCell: Cell = {
   },
   block_hash: '0xaaeee4a93a1d79ccdf50f9e2e6c688f9d935bb8c21aeaf2c09508f8070b1bd89',
   block_number: '0x13',
-  data: formatOrderData(BigInt('50000000000'), BigInt('10000000000'), BigInt('20000000000'), '00'),
+  data: encodeOrderData({
+    sudtAmount: BigInt('50000000000'),
+    orderAmount: BigInt('10000000000'),
+    version: '01' as '01',
+    price: {
+      effect: BigInt('20000000000000000000'),
+      exponent: BigInt(-9),
+    },
+    type: '00' as '00' | '01',
+  }),
 }
 
 export const askCell: Cell = {
@@ -43,5 +52,14 @@ export const askCell: Cell = {
   },
   block_hash: '0xaaeee4a93a1d79ccdf50f9e2e6c688f9d935bb8c21aeaf2c09508f8070b1bd89',
   block_number: '0x13',
-  data: formatOrderData(BigInt('50000000000'), BigInt('100000000000'), BigInt('500000000000000000000'), '01'),
+  data: encodeOrderData({
+    version: '01',
+    sudtAmount: BigInt('50000000000'),
+    orderAmount: BigInt('100000000000'),
+    price: {
+      effect: BigInt('5000000000000000000'),
+      exponent: BigInt(-18),
+    },
+    type: '01',
+  }),
 }

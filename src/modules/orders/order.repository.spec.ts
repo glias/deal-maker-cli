@@ -1,6 +1,7 @@
 import { createConnection, getConnection } from 'typeorm'
 import OrderRepository from './order.repository'
 import { OrderType } from './order.entity'
+import { getPrice } from '../../utils'
 import {
   askOrderWithLowerPrice,
   askOrderWithHigherPrice,
@@ -142,8 +143,12 @@ describe('Test order repository', () => {
       )
       expect(askOrders).toHaveLength(2)
       expect(bidOrders).toHaveLength(2)
-      expect(BigInt(askOrders[0].price)).toBeLessThan(BigInt(askOrders[1].price))
-      expect(BigInt(bidOrders[0].price)).toBeGreaterThan(BigInt(bidOrders[1].price))
+      expect(getPrice({ effect: askOrders[0].priceEffect, exponent: askOrders[0].priceExponent })).toBeLessThan(
+        getPrice({ effect: askOrders[1].priceEffect, exponent: askOrders[1].priceExponent }),
+      )
+      expect(getPrice({ effect: bidOrders[0].priceEffect, exponent: bidOrders[0].priceExponent })).toBeGreaterThan(
+        getPrice({ effect: bidOrders[1].priceEffect, exponent: bidOrders[1].priceExponent }),
+      )
     })
 
     it('should skip pending orders', async () => {

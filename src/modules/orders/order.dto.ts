@@ -3,7 +3,8 @@ export interface OrderDto {
   id: string
   tokenId: string
   type: OrderType
-  price: bigint
+  priceEffect: bigint
+  priceExponent: bigint
   blockNumber: number
   output: string
 }

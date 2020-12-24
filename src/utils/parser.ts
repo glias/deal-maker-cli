@@ -215,3 +215,7 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
   }
   return { askAmount, bidAmount, price }
 }
+
+export const getPrice = (price: Record<'effect' | 'exponent', bigint>) => {
+  return price.effect * BigInt(10 ** Number(price.exponent))
+}

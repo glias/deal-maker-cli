@@ -49,7 +49,8 @@ describe('Test orders service', () => {
         id: `${cellToSave.out_point.tx_hash}-${cellToSave.out_point.index}`,
         tokenId: cellToSave.cell_output.type.args,
         blockNumber: +cellToSave.block_number,
-        price: BigInt(500000000000000000000).toString(16).padStart(32, '0'),
+        priceEffect: BigInt('5000000000000000000').toString(16),
+        priceExponent: -18,
         type: OrderType.Ask,
         output: JSON.stringify({
           ...cellToSave.cell_output,

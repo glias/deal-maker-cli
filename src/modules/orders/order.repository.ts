@@ -1,7 +1,15 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository, Not, In } from 'typeorm'
 import rpcResultFormatter from '@nervosnetwork/ckb-sdk-rpc/lib/resultFormatter'
-import { parseOrderCell, SUDT_TYPE_ARGS_LIST, FEE, FEE_RATIO, SHANNONS_RATIO, PRICE_RATIO, logger } from '../../utils'
+import {
+  parseOrderCell,
+  SUDT_TYPE_ARGS_LIST,
+  FEE,
+  SHANNONS_RATIO,
+  logger,
+  FEE_RATIO,
+  ORDER_CELL_SIZE,
+} from '../../utils'
 import { Order, OrderType } from './order.entity'
 
 @injectable()
@@ -21,19 +29,20 @@ class OrderRepository extends Repository<Order> {
   }
 
   async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = [], sudtTypeArgs: string) {
-    return this.find({
-      skip: pageNo * this.#pageSize,
-      take: this.#pageSize,
-      order: {
-        price: type === OrderType.Bid ? 'DESC' : 'ASC',
-        blockNumber: 'DESC',
-      },
-      where: {
-        type: type,
-        id: Not(In(pendingOrderIds)),
-        tokenId: sudtTypeArgs,
-      },
-    }).then(orders => orders.map(o => ({ ...o, price: BigInt(`0x${o.price}`) })))
+    const order = type === OrderType.Bid ? 'ASC' : 'DESC'
+    return this.createQueryBuilder('order')
+      .where('order.type = :type', { type })
+      .andWhere('order.tokenId = :tokenId', { tokenId: sudtTypeArgs })
+      .andWhere('order.id NOT IN (:...ids)', { ids: pendingOrderIds })
+      .orderBy('order.priceExponent', order)
+      .addOrderBy('order.priceEffect', order)
+      .addOrderBy('order.blockNumber', 'DESC')
+      .offset(pageNo * this.#pageSize)
+      .limit(this.#pageSize)
+      .getMany()
+      .then(orders =>
+        orders.map(o => ({ ...o, price: { effect: BigInt(`0x${o.priceEffect}`), exponent: BigInt(o.priceExponent) } })),
+      )
   }
 
   async flushAllOrders(cells: Array<ReturnType<typeof parseOrderCell>>) {
@@ -59,7 +68,8 @@ class OrderRepository extends Repository<Order> {
             type: cell.output.type && rpcResultFormatter.toScript(cell.output.type),
           }),
           type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
-          price: cell.price.toString(16).padStart(32, '0'),
+          priceEffect: cell.price.effect.toString(16).padStart(16, '0'),
+          priceExponent: Number(cell.price.exponent),
         })
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {
@@ -78,22 +88,23 @@ class OrderRepository extends Repository<Order> {
 
     // TODO get min capacity and get min sudt amount
     try {
+      // const PRICE_RATIO = BigInt(10 ** Number(cell.price.exponent))
       switch (+cell.type) {
         case OrderType.Bid: {
-          const MIN_SHANNONS = BigInt(17_900_000_000)
-          const minCapacity =
-            (cell.orderAmount * cell.price + (cell.orderAmount * cell.price * FEE) / FEE_RATIO) / PRICE_RATIO +
-            MIN_SHANNONS
-
-          return BigInt(cell.output.capacity) < minCapacity
+          // const MIN_SHANNONS = ORDER_CELL_SIZE * BigInt(10 ** 8)
+          // const minCapacity = (cell.orderAmount * cell.price.effect + (cell.orderAmount * cell.price.effect * FEE) / FEE_RATIO) / PRICE_RATIO +
+          //   MIN_SHANNONS
+          // return BigInt(cell.output.capacity) < minCapacity
+          return false
         }
         case OrderType.Ask: {
           if (!cell.sudtAmount) {
             return true
           }
-          const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO * PRICE_RATIO) / (cell.price * SHANNONS_RATIO)
-          const minSudtOrderAmount = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
-          return cell.sudtAmount < minSudtOrderAmount
+          // const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO * PRICE_RATIO) / (cell.price.effect * SHANNONS_RATIO)
+          // const minSudtOrderAmount = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
+          // return cell.sudtAmount < minSudtOrderAmount
+          return false
         }
         default: {
           return true
