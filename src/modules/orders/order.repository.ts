@@ -1,14 +1,14 @@
 import { injectable } from 'inversify'
-import { EntityRepository, Repository, Not, In } from 'typeorm'
+import { EntityRepository, Repository } from 'typeorm'
 import rpcResultFormatter from '@nervosnetwork/ckb-sdk-rpc/lib/resultFormatter'
 import {
   parseOrderCell,
   SUDT_TYPE_ARGS_LIST,
-  FEE,
-  SHANNONS_RATIO,
+  // FEE,
+  // SHANNONS_RATIO,
   logger,
-  FEE_RATIO,
-  ORDER_CELL_SIZE,
+  // FEE_RATIO,
+  // ORDER_CELL_SIZE,
 } from '../../utils'
 import { Order, OrderType } from './order.entity'
 

@@ -4,7 +4,7 @@ import { OrderType } from '../orders/order.entity'
 import {
   parseOrderData,
   formatDealInfo,
-  formatOrderData,
+  encodeOrderData,
   readBigUInt128LE,
   FEE,
   FEE_RATIO,
@@ -12,7 +12,8 @@ import {
   bigIntToUint128Le,
 } from '../../utils'
 
-type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
+type Price = Record<'effect' | 'exponent', bigint>
+type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount', bigint> & { type: OrderType; price: Price }
 type Scripts = Record<'lock' | 'type', CKBComponents.Script>
 
 interface MatchedOrder {
@@ -22,7 +23,7 @@ interface MatchedOrder {
 }
 
 interface Order extends MatchedOrder {
-  price: bigint
+  price: Price
   part?: boolean
 }
 
@@ -45,12 +46,13 @@ export default class {
     this.matchedOrderList.forEach(o => {
       outputs.push({ capacity: `0x${o.info.capacity.toString(16)}`, ...o.scripts })
       outputsData.push(
-        formatOrderData(
-          o.info.sudtAmount,
-          o.info.orderAmount,
-          o.info.price,
-          o.info.type === OrderType.Bid ? '00' : '01',
-        ),
+        encodeOrderData({
+          sudtAmount: o.info.sudtAmount,
+          orderAmount: o.info.orderAmount,
+          price: o.info.price,
+          type: o.info.type === OrderType.Bid ? '00' : '01',
+          version: '01',
+        }),
       )
       const [txHash, index] = o.id.split('-')
       if (!inputs.find(i => i.previousOutput?.txHash === txHash && i.previousOutput.index === index)) {

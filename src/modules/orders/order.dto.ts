@@ -3,8 +3,7 @@ export interface OrderDto {
   id: string
   tokenId: string
   type: OrderType
-  priceEffect: bigint
-  priceExponent: bigint
+  price: Record<'effect' | 'exponent', bigint>
   blockNumber: number
   output: string
 }

@@ -1,6 +1,9 @@
 import type { Cell } from '@ckb-lumos/base'
+import BigNumber from 'bignumber.js'
 import { OrderType } from '../modules/orders/order.entity'
-import { PRICE_RATIO } from './conts'
+// import { PRICE_RATIO } from './conts'
+const PRICE_RATIO = BigInt(`1${'0'.repeat(128)}`)
+// const PRICE_RATIO = BigInt(`1${'0'.repeat(20)}`)
 
 /**
  * @param rawHexString hex string without 0x prefix
@@ -173,9 +176,17 @@ const findBestDeal = (ckbAmount: bigint, price: bigint) => {
   return { ckb, sudt }
 }
 
-type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
+type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount', bigint> & {
+  type: OrderType
+  price: Record<'effect' | 'exponent', bigint>
+}
 export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo) => {
-  const price = (bidOrderInfo.price + askOrderInfo.price) / BigInt(2)
+  const [bidPrice, askPrice] = [bidOrderInfo.price, askOrderInfo.price].map(price => {
+    const exponent = Number(price.exponent)
+    const p = price.effect * PRICE_RATIO
+    return exponent >= 0 ? p * BigInt(10 ** exponent) : p / BigInt(10 ** (-1 * exponent))
+  })
+  const price = (bidPrice + askPrice) / BigInt(2)
 
   const { sudt: bidOrderAmount, ckb: bidCostAmount } = findBestDeal(
     (bidOrderInfo.orderAmount * price) / PRICE_RATIO,
@@ -200,15 +211,15 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
 
   if (
     askCostAmount &&
-    ((askOrderAmount * PRICE_RATIO) / askCostAmount < askOrderInfo.price ||
-      (askOrderAmount * PRICE_RATIO) / askCostAmount > bidOrderInfo.price)
+    ((askOrderAmount * PRICE_RATIO) / askCostAmount < askPrice ||
+      (askOrderAmount * PRICE_RATIO) / askCostAmount > bidPrice)
   ) {
     askAmount.orderAmount = BigInt(0)
     askAmount.costAmount = BigInt(0)
   } else if (
     bidOrderAmount &&
-    ((bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidOrderInfo.price ||
-      (bidCostAmount * PRICE_RATIO) / bidOrderAmount < askOrderInfo.price)
+    ((bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidPrice ||
+      (bidCostAmount * PRICE_RATIO) / bidOrderAmount < askPrice)
   ) {
     bidAmount.orderAmount = BigInt(0)
     bidAmount.costAmount = BigInt(0)
@@ -217,5 +228,6 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
 }
 
 export const getPrice = (price: Record<'effect' | 'exponent', bigint>) => {
-  return price.effect * BigInt(10 ** Number(price.exponent))
+  const effect = new BigNumber(price.effect.toString())
+  return effect.multipliedBy(new BigNumber(10).exponentiatedBy(Number(price.exponent)))
 }
