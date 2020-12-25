@@ -227,7 +227,9 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
   return {
     askAmount,
     bidAmount,
-    price: new BigNumber(price.toString()).div(PRICE_RATIO.toString()).toFormat({ groupSeparator: '' }),
+    price: new BigNumber(price.toString())
+      .div(PRICE_RATIO.toString())
+      .toFormat({ groupSeparator: '', decimalSeparator: '.' }),
   }
 }
 

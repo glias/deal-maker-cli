@@ -14,7 +14,9 @@ export const isCellValid = (cell: Cell) => {
     }
     const { price: p, orderAmount, sudtAmount, output, type } = parseOrderCell(cell)
     const freeCapacity = BigInt(output.capacity) - ORDER_CELL_SIZE * SHANNONS_RATIO
-    const price = BigInt(getPrice(p).multipliedBy(PRICE_RATIO.toString()).toFormat({ groupSeparator: '' }))
+    const price = BigInt(
+      getPrice(p).multipliedBy(PRICE_RATIO.toString()).toFormat({ groupSeparator: '', decimalSeparator: '.' }),
+    )
 
     if (+type === OrderType.Bid) {
       const costAmount = orderAmount * price
