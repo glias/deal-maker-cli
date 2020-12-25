@@ -1,9 +1,8 @@
 import { Cell } from '@ckb-lumos/base'
 import { logger } from './logger'
-import { ORDER_DATA_LENGTH, ORDER_CELL_SIZE, SHANNONS_RATIO, FEE, FEE_RATIO } from './conts'
+import { ORDER_DATA_LENGTH, ORDER_CELL_SIZE, SHANNONS_RATIO, FEE, FEE_RATIO, PRICE_RATIO } from './conts'
 import { parseOrderCell, getPrice } from './parser'
 import { OrderType } from '../modules/orders/order.entity'
-const PRICE_RATIO = BigInt(`1${'0'.repeat(20)}`)
 
 const logTag = `\x1b[40m[Validator]\x1b[0m`
 

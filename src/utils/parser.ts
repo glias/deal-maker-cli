@@ -1,9 +1,7 @@
 import type { Cell } from '@ckb-lumos/base'
 import BigNumber from 'bignumber.js'
 import { OrderType } from '../modules/orders/order.entity'
-// import { PRICE_RATIO } from './conts'
-const PRICE_RATIO = BigInt(`1${'0'.repeat(128)}`)
-// const PRICE_RATIO = BigInt(`1${'0'.repeat(20)}`)
+import { PRICE_RATIO } from './conts'
 
 /**
  * @param rawHexString hex string without 0x prefix
