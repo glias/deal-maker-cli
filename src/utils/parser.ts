@@ -224,7 +224,11 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     bidAmount.orderAmount = BigInt(0)
     bidAmount.costAmount = BigInt(0)
   }
-  return { askAmount, bidAmount, price }
+  return {
+    askAmount,
+    bidAmount,
+    price: new BigNumber(price.toString()).div(PRICE_RATIO.toString()).toFormat({ groupSeparator: '' }),
+  }
 }
 
 export const getPrice = (price: Record<'effect' | 'exponent', bigint>) => {

@@ -9,7 +9,7 @@ describe('Test validator', () => {
       expected,
     ])
 
-    it.each(fixtureTable)('%s', (_title, cell: any, expected) => {
+    it.each(fixtureTable.slice(6, 7))('%s', (_title, cell: any, expected) => {
       expect(isCellValid(cell)).toBe(expected)
     })
   })

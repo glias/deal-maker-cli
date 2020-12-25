@@ -1,5 +1,5 @@
-import { PRICE_RATIO } from './conts'
-import { parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo, encodeOrderData } from './parser'
+import BigNumber from 'bignumber.js'
+import { parseOrderCell, parseOrderData, parsePlaceOrderTx, formatDealInfo, encodeOrderData, getPrice } from './parser'
 
 describe('Test parser', () => {
   it('parse order data', () => {
@@ -167,21 +167,27 @@ describe('Test parser', () => {
     })
   })
 
-  describe('format deal info', () => {
-    it('imperfect price for order amount', () => {
+  describe.only('format deal info', () => {
+    const PRICE = {
+      FIVE: {
+        effect: BigInt(500000000000000000),
+        exponent: BigInt(-17),
+      },
+    }
+    it.only('imperfect price for order amount', () => {
       const fixture = {
         askOrderInfo: {
           capacity: BigInt(24_667_575_757),
           sudtAmount: BigInt(1_501_460_607),
           orderAmount: BigInt(3_242_424_243),
-          price: BigInt(500_000_000_000_000_000_000),
+          price: PRICE.FIVE,
           type: 1,
         },
         bidOrderInfo: {
           capacity: BigInt(30_200_000_000),
           sudtAmount: BigInt(0),
           orderAmount: BigInt(2_452_642_073),
-          price: BigInt(500_000_000_000_000_000_000),
+          price: PRICE.FIVE,
           type: 0,
         },
       }
@@ -192,15 +198,23 @@ describe('Test parser', () => {
         orderAmount: BigInt(3_242_424_240),
         targetAmount: BigInt(27_909_999_997),
       })
-      expect((askAmount.orderAmount * PRICE_RATIO) / askAmount.costAmount).toBe(fixture.askOrderInfo.price)
+      expect(
+        new BigNumber(askAmount.orderAmount.toString())
+          .div(askAmount.costAmount.toString())
+          .isEqualTo(getPrice(fixture.askOrderInfo.price)),
+      ).toBeTruthy()
       expect(bidAmount).toEqual({
         balance: BigInt(30_200_000_000),
         costAmount: BigInt(12_263_210_365),
         orderAmount: BigInt(2_452_642_073),
         targetAmount: BigInt(2_452_642_073),
       })
-      expect((bidAmount.costAmount * PRICE_RATIO) / bidAmount.orderAmount).toBe(fixture.bidOrderInfo.price)
-      expect(price).toBe(BigInt(500_000_000_000_000_000_000))
+      expect(
+        new BigNumber(bidAmount.costAmount.toString())
+          .div(bidAmount.orderAmount.toString())
+          .isEqualTo(getPrice(fixture.bidOrderInfo.price)),
+      ).toBeTruthy()
+      expect(price).toBe('5')
     })
 
     it('perfect price for order amount', () => {
@@ -209,14 +223,14 @@ describe('Test parser', () => {
           capacity: BigInt(24_667_575_757),
           sudtAmount: BigInt(1_501_460_607),
           orderAmount: BigInt(3_242_424_240),
-          price: BigInt(500_000_000_000_000_000_000),
+          price: PRICE.FIVE,
           type: 1,
         },
         bidOrderInfo: {
           capacity: BigInt(30_200_000_000),
           sudtAmount: BigInt(0),
           orderAmount: BigInt(2_452_642_073),
-          price: BigInt(500_000_000_000_000_000_000),
+          price: PRICE.FIVE,
           type: 0,
         },
       }

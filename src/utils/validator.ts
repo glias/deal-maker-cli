@@ -1,8 +1,9 @@
 import { Cell } from '@ckb-lumos/base'
 import { logger } from './logger'
-import { ORDER_DATA_LENGTH, PRICE_RATIO, ORDER_CELL_SIZE, SHANNONS_RATIO, FEE, FEE_RATIO } from './conts'
-import { parseOrderCell } from './parser'
+import { ORDER_DATA_LENGTH, ORDER_CELL_SIZE, SHANNONS_RATIO, FEE, FEE_RATIO } from './conts'
+import { parseOrderCell, getPrice } from './parser'
 import { OrderType } from '../modules/orders/order.entity'
+const PRICE_RATIO = BigInt(`1${'0'.repeat(20)}`)
 
 const logTag = `\x1b[40m[Validator]\x1b[0m`
 
@@ -11,8 +12,9 @@ export const isCellValid = (cell: Cell) => {
     if (cell.data?.length !== ORDER_DATA_LENGTH) {
       throw new Error('Invalid data length')
     }
-    const { price, orderAmount, sudtAmount, output, type } = parseOrderCell(cell)
+    const { price: p, orderAmount, sudtAmount, output, type } = parseOrderCell(cell)
     const freeCapacity = BigInt(output.capacity) - ORDER_CELL_SIZE * SHANNONS_RATIO
+    const price = BigInt(getPrice(p).multipliedBy(PRICE_RATIO.toString()).toFormat({ groupSeparator: '' }))
 
     if (+type === OrderType.Bid) {
       const costAmount = orderAmount * price

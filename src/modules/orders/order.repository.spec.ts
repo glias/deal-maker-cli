@@ -143,12 +143,8 @@ describe('Test order repository', () => {
       )
       expect(askOrders).toHaveLength(2)
       expect(bidOrders).toHaveLength(2)
-      expect(getPrice({ effect: askOrders[0].priceEffect, exponent: askOrders[0].priceExponent })).toBeLessThan(
-        getPrice({ effect: askOrders[1].priceEffect, exponent: askOrders[1].priceExponent }),
-      )
-      expect(getPrice({ effect: bidOrders[0].priceEffect, exponent: bidOrders[0].priceExponent })).toBeGreaterThan(
-        getPrice({ effect: bidOrders[1].priceEffect, exponent: bidOrders[1].priceExponent }),
-      )
+      expect(getPrice(askOrders[0].price).isLessThan(getPrice(askOrders[1].price))).toBeTruthy()
+      expect(getPrice(bidOrders[0].price).isGreaterThan(getPrice(bidOrders[1].price))).toBeTruthy()
     })
 
     it('should skip pending orders', async () => {
