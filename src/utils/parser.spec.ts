@@ -7,7 +7,7 @@ describe('Test parser', () => {
       version: '01',
       sudtAmount: '00743ba40b0000000000000000000000',
       orderAmount: '00e87648170000000000000000000000',
-      price: '00000000000000050a',
+      price: '05000000000000000a',
       type: '01',
     }
     const DATA = `0x${fixture.sudtAmount}${fixture.version}${fixture.orderAmount}${fixture.price}${fixture.type}`
@@ -29,7 +29,7 @@ describe('Test parser', () => {
       version: '01',
       sudtAmount: '00743ba40b0000000000000000000000',
       orderAmount: '00e87648170000000000000000000000',
-      price: '00000000000000050a',
+      price: '05000000000000000a',
       type: '01',
     }
     const CELL = {
@@ -82,7 +82,7 @@ describe('Test parser', () => {
     }
 
     expect(encodeOrderData(fixture)).toBe(
-      '0x00c817a80400000000000000000000000100e8764817000000000000000000000000000000000000010a01',
+      '0x00c817a80400000000000000000000000100e8764817000000000000000000000001000000000000000a01',
     )
   })
 

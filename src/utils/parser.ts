@@ -12,7 +12,7 @@ export const readBigUInt128LE = (rawHexString: string) => {
 }
 
 const parsePrice = (price: string) => {
-  let effect = BigInt(`0x${price.substr(0, 16)}`)
+  let effect = BigInt(`0x${Buffer.from(price.substr(0, 16), 'hex').reverse().toString('hex')}`)
   const e = +`0x${price.slice(16)}`
   const view = new DataView(new ArrayBuffer(1))
   view.setUint8(0, e)
@@ -35,7 +35,9 @@ const encodePrice = (price: Record<'effect' | 'exponent', bigint>) => {
   const view = new DataView(new ArrayBuffer(1))
   view.setInt8(0, Number(exponent))
   const e = +view.getUint8(0)
-  return `${effect.toString(16).padStart(16, '0')}${e.toString(16).padStart(2, '0')}`
+  return `${Buffer.from(effect.toString(16).padStart(16, '0'), 'hex').reverse().toString('hex')}${e
+    .toString(16)
+    .padStart(2, '0')}`
 }
 
 export const parseOrderData = (
