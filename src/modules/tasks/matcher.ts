@@ -119,7 +119,7 @@ export default class {
       }
 
       if (bidAmount.orderAmount === askAmount.costAmount) {
-        if (bidAmount.balance * FEE_RATIO < bidAmount.costAmount * FEE_RATIO + bidAmount.costAmount * FEE) {
+        if (!this.#isBidBalanceEnough(bidAmount.balance, bidAmount.costAmount)) {
           if (bidOrder.part) {
             break
           }
@@ -127,7 +127,7 @@ export default class {
           continue
         }
 
-        if (askAmount.balance * FEE_RATIO < askAmount.costAmount * FEE_RATIO + askAmount.costAmount * FEE) {
+        if (!this.#isAskBalanceEnough(askAmount.balance, askAmount.costAmount)) {
           if (askOrder.part) {
             break
           }
@@ -141,7 +141,7 @@ export default class {
       }
 
       if (bidAmount.orderAmount < askAmount.costAmount) {
-        if (bidAmount.balance * FEE_RATIO < bidAmount.costAmount * FEE_RATIO + bidAmount.costAmount * FEE) {
+        if (!this.#isBidBalanceEnough(bidAmount.balance, bidAmount.costAmount)) {
           if (bidOrder.part) {
             break
           }
@@ -149,7 +149,7 @@ export default class {
           continue
         }
 
-        if (askOrder.info.sudtAmount * FEE_RATIO < bidAmount.orderAmount * FEE_RATIO + bidAmount.orderAmount * FEE) {
+        if (!this.#isAskBalanceEnough(askOrder.info.sudtAmount, bidAmount.orderAmount)) {
           if (askOrder.part) {
             break
           }
@@ -163,7 +163,7 @@ export default class {
       }
 
       if (bidAmount.orderAmount > askAmount.costAmount) {
-        if (askAmount.balance * FEE_RATIO < askAmount.costAmount * FEE_RATIO + askAmount.costAmount * FEE) {
+        if (!this.#isAskBalanceEnough(askAmount.balance, askAmount.costAmount)) {
           if (askOrder.part) {
             break
           }
@@ -171,7 +171,7 @@ export default class {
           continue
         }
 
-        if (bidOrder.info.capacity * FEE_RATIO < askAmount.orderAmount * FEE_RATIO + askAmount.orderAmount * FEE) {
+        if (!this.#isBidBalanceEnough(bidOrder.info.capacity, askAmount.orderAmount)) {
           if (bidOrder.part) {
             break
           }
@@ -262,5 +262,13 @@ export default class {
     } catch {
       return null
     }
+  }
+
+  #isBidBalanceEnough = (balance: bigint, costAmount: bigint) => {
+    return balance * FEE_RATIO >= costAmount * (FEE_RATIO + FEE)
+  }
+
+  #isAskBalanceEnough = (balance: bigint, costAmount: bigint) => {
+    return balance * FEE_RATIO >= costAmount * (FEE_RATIO + FEE)
   }
 }

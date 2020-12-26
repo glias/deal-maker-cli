@@ -1,7 +1,7 @@
 import { Cell } from '@ckb-lumos/base'
 import BigNumber from 'bignumber.js'
 import { logger } from './logger'
-import { ORDER_DATA_LENGTH, ORDER_CELL_SIZE, SHANNONS_RATIO, NET_RATIO } from './conts'
+import { ORDER_DATA_LENGTH, ORDER_CELL_SIZE, SHANNONS_RATIO, FEE, FEE_RATIO } from './conts'
 import { parseOrderCell, getPrice } from './parser'
 import { OrderType } from '../modules/orders/order.entity'
 
@@ -20,7 +20,7 @@ export const isCellValid = (cell: Cell) => {
     const sudtAmount = new BigNumber(parsed.sudtAmount.toString())
     const type = parsed.type
 
-    const netRatio = new BigNumber(NET_RATIO)
+    const netRatio = new BigNumber(`${(FEE_RATIO - FEE) / FEE_RATIO}`)
     switch (+type) {
       case OrderType.Bid: {
         /**
