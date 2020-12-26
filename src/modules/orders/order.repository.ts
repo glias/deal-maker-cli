@@ -1,15 +1,7 @@
 import { injectable } from 'inversify'
 import { EntityRepository, Repository } from 'typeorm'
 import rpcResultFormatter from '@nervosnetwork/ckb-sdk-rpc/lib/resultFormatter'
-import {
-  parseOrderCell,
-  SUDT_TYPE_ARGS_LIST,
-  // FEE,
-  // SHANNONS_RATIO,
-  logger,
-  // FEE_RATIO,
-  // ORDER_CELL_SIZE,
-} from '../../utils'
+import { parseOrderCell, SUDT_TYPE_ARGS_LIST, logger } from '../../utils'
 import { Order, OrderType } from './order.entity'
 
 @injectable()
@@ -86,24 +78,12 @@ class OrderRepository extends Repository<Order> {
       return true
     }
 
-    // TODO get min capacity and get min sudt amount
     try {
-      // const PRICE_RATIO = BigInt(10 ** Number(cell.price.exponent))
       switch (+cell.type) {
         case OrderType.Bid: {
-          // const MIN_SHANNONS = ORDER_CELL_SIZE * BigInt(10 ** 8)
-          // const minCapacity = (cell.orderAmount * cell.price.effect + (cell.orderAmount * cell.price.effect * FEE) / FEE_RATIO) / PRICE_RATIO +
-          //   MIN_SHANNONS
-          // return BigInt(cell.output.capacity) < minCapacity
           return false
         }
         case OrderType.Ask: {
-          if (!cell.sudtAmount) {
-            return true
-          }
-          // const askOrderSpendSUDT = (cell.orderAmount * SHANNONS_RATIO * PRICE_RATIO) / (cell.price.effect * SHANNONS_RATIO)
-          // const minSudtOrderAmount = askOrderSpendSUDT + (askOrderSpendSUDT * FEE) / FEE_RATIO
-          // return cell.sudtAmount < minSudtOrderAmount
           return false
         }
         default: {

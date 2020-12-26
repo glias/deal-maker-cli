@@ -162,30 +162,3 @@ export const orderWithWrongType: Order = {
     data: '0x00',
   },
 }
-
-export const orderWithAskButSudtAmountZero: Order = {
-  id: 'id_order_with_zero_amount',
-  tokenId: 'token_id_order_with_zero_amount',
-  blockNumber: 2,
-  type: '01',
-  price: {
-    effect: BigInt('1000000000000'),
-    exponent: BigInt(0),
-  },
-  orderAmount: BigInt('1000'),
-  sudtAmount: BigInt('0'),
-  output: {
-    capacity: '0x0',
-    lock: {
-      code_hash: 'code_hash_order_with_zero_amount',
-      hash_type: 'hash_type_order_with_zero_amount' as any,
-      args: '0x9c833b9ebd4259ca044d2c47c5e51b7fc25380b07291e54b248d3808f08ed7fd',
-    },
-    type: {
-      code_hash: 'code_hash_order_with_zero_amount',
-      hash_type: 'hash_type_order_with_zero_amount' as any,
-      args: '0x6fe3733cd9df22d05b8a70f7b505d0fb67fb58fb88693217135ff5079713e902',
-    },
-    data: '0x00',
-  },
-}

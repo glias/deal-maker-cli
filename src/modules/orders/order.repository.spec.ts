@@ -9,7 +9,6 @@ import {
   bidOrderWithLowerPrice,
   orderWithZeroAmount,
   orderWithWrongType,
-  orderWithAskButSudtAmountZero,
 } from '../../mock'
 
 describe('Test order repository', () => {
@@ -192,14 +191,6 @@ describe('Test order repository', () => {
       let orders = await orderRepository.find()
       expect(orders.map(o => o.type)).toEqual([OrderType.Ask, OrderType.Ask])
       await orderRepository.flushAllOrders([orderWithWrongType])
-      orders = await orderRepository.find()
-      expect(orders.map(o => o.type)).toEqual([])
-    })
-
-    it('should skip orders which is ask but with zero sudt amount', async () => {
-      let orders = await orderRepository.find()
-      expect(orders.map(o => o.type)).toEqual([OrderType.Ask, OrderType.Ask])
-      await orderRepository.flushAllOrders([orderWithAskButSudtAmountZero])
       orders = await orderRepository.find()
       expect(orders.map(o => o.type)).toEqual([])
     })
