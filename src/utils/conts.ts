@@ -11,8 +11,9 @@ export const ORDERBOOK_TX_HASH = process.env.ORDERBOOK_TX_HASH!
 export const WEB_UI_PORT = process.env.WEB_UI_PORT
 export const FEE = BigInt(3)
 export const FEE_RATIO = BigInt(1_000)
-export const SHANNONS_RATIO = BigInt(10 ** 8)
-export const ORDER_CELL_SIZE = BigInt(187)
+export const SHANNONS_RATIO = 10 ** 8
+export const NET_RATIO = '0.997'
+export const ORDER_CELL_SIZE = 181 // 179 bytes base + 1 byte for version + 1 byte for price exponent
 export const PRICE_RATIO = BigInt(`1${'0'.repeat(128)}`)
 export const ORDER_DATA_LENGTH = 88
 

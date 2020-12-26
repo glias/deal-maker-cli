@@ -1,9 +1,9 @@
 {
   "isCellValid": {
-    "valid bid order": {
+    "valid bid order: 1000 balance_ckb - 3 fee_ckb > 498 order_sudt * 2 price": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1ba3049c58",
+          "capacity": "0x436d818e8",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -21,14 +21,14 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x000000000000000000000000000000000114f6a23617000000000000000000000001000000000000000000"
+        "data": "0x0000000000000000000000000000000001f201000000000000000000000000000002000000000000000000"
       },
       "expected": true
     },
-    "invalid bid order, capacity is not enough: { price: 1, orderAmount: 99700897300, capacity: 118699105367, type: 00 }": {
+    "invalid bid order, balance_ckb is not enough: 1000 balance_ckb - 3 fee_ckb < 499 order_sudt * 2 price": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1ba3049c57",
+          "capacity": "0x436d818e8",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -46,14 +46,14 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x000000000000000000000000000000000114f6a23617000000000000000000000001000000000000000000"
+        "data": "0x0000000000000000000000000000000001f301000000000000000000000000000002000000000000000000"
       },
       "expected": false
     },
-    "invalid bid order, order amount is too low": {
+    "invalid bid order, order_sudt is too low: 1 order_sudt * 0.5 price < 1": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b618f4914",
+          "capacity": "0x436d818e8",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -71,14 +71,14 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x000000000000000000000000000000000101000000000000000000000000000000e1f5050000000000f800"
+        "data": "0x0000000000000000000000000000000001010000000000000000000000000000000500000000000000ff00"
       },
       "expected": false
     },
-    "valid ask order": {
+    "valid ask order: (1000 balance_sudt - 3 fee_sudt) * 2 price >= 1994 order_ckb": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b618f4914",
+          "capacity": "0x436d81500",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -96,14 +96,14 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x584169481700000000000000000000000114f6a23617000000000000000000000001000000000000000001"
+        "data": "0xe803000000000000000000000000000001ca07000000000000000000000000000002000000000000000001"
       },
       "expected": true
     },
-    "invalid ask order, sudt amount is not enough: { price: 1, orderAmount: 99700897300, capacity: 99700897300, sudtAmount: 99999105367, type: 01 } ": {
+    "invalid ask order, sudt balance is not enough: (1000 balance_sudt - 3 fee_sudt) * 2 price < 1996 order_ckb ": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b618f4914",
+          "capacity": "0x436d81500",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -121,14 +121,14 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0x574169481700000000000000000000000114f6a23617000000000000000000000001000000000000000001"
+        "data": "0xe803000000000000000000000000000001cc07000000000000000000000000000002000000000000000001"
       },
       "expected": false
     },
-    "invalid ask order, order amount is too low": {
+    "invalid ask order, order_ckb is too low: 1 order_ckb / 2 price < 1": {
       "cell": {
         "cell_output": {
-          "capacity": "0x1b618f4914",
+          "capacity": "0x436d81500",
           "lock": {
             "code_hash": "0xc8f9ffa3de3171006d5c499b77624f815072f21a047ebaf38dfeeee980dde500",
             "hash_type": "type",
@@ -146,7 +146,7 @@
         },
         "block_hash": "0xb3de6ac4a59c4bd20d4812d87b6c249d9f884491275c73d86ef788f38226977e",
         "block_number": "0x7542f",
-        "data": "0xc210384000000000000000000000000001130000000000000000000000000000001e000000000000000001"
+        "data": "0xe8030000000000000000000000000000010100000000000000000000000000000002000000000000000001"
       },
       "expected": false
     },
