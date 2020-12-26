@@ -20,7 +20,7 @@ export const isCellValid = (cell: Cell) => {
     const sudtAmount = new BigNumber(parsed.sudtAmount.toString())
     const type = parsed.type
 
-    const netRatio = new BigNumber(`${(FEE_RATIO - FEE) / FEE_RATIO}`)
+    const netRatio = new BigNumber(`${FEE_RATIO - FEE}`).div(`${FEE_RATIO}`)
     switch (+type) {
       case OrderType.Bid: {
         /**

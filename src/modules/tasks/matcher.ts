@@ -10,6 +10,8 @@ import {
   FEE_RATIO,
   MATCH_ORDERS_CELL_DEPS,
   bigIntToUint128Le,
+  ORDER_CELL_SIZE,
+  SHANNONS_RATIO,
 } from '../../utils'
 
 type Price = Record<'effect' | 'exponent', bigint>
@@ -26,6 +28,8 @@ interface Order extends MatchedOrder {
   price: Price
   part?: boolean
 }
+
+const ORDER_CELL_MIN_CAPACITY = BigInt(ORDER_CELL_SIZE) * BigInt(SHANNONS_RATIO)
 
 export default class {
   matchedOrderList: Array<MatchedOrder> = []
@@ -193,7 +197,7 @@ export default class {
   }
 
   handlePartialMatchedAskOrder = (askOrder: Order, dealtAmount: Record<'capacity' | 'sudt', bigint>) => {
-    const fee = (dealtAmount.sudt * FEE) / FEE_RATIO
+    const fee = (dealtAmount.sudt * FEE) / (FEE_RATIO - FEE)
     const orderAmount = askOrder.info.orderAmount - dealtAmount.capacity
     const sudtAmount = askOrder.info.sudtAmount - dealtAmount.sudt - fee
     const capacity = askOrder.info.capacity + dealtAmount.capacity
@@ -203,7 +207,7 @@ export default class {
   }
 
   handlePartialMatchedBidOrder = (bidOrder: Order, dealtAmount: Record<'capacity' | 'sudt', bigint>) => {
-    const fee = (dealtAmount.capacity * FEE) / FEE_RATIO
+    const fee = (dealtAmount.capacity * FEE) / (FEE_RATIO - FEE)
     const capacity = bidOrder.info.capacity - dealtAmount.capacity - fee
     const orderAmount = bidOrder.info.orderAmount - dealtAmount.sudt
     const sudtAmount = bidOrder.info.sudtAmount + dealtAmount.sudt
@@ -216,7 +220,7 @@ export default class {
     order: Order,
     { costAmount, balance, targetAmount }: Record<'costAmount' | 'balance' | 'targetAmount', bigint>,
   ) => {
-    const fee = (costAmount * FEE) / FEE_RATIO
+    const fee = (costAmount * FEE) / (FEE_RATIO - FEE)
     const remain = balance - costAmount - fee
     if (order.info.type === OrderType.Bid) {
       this.dealMakerCapacityAmount += fee
@@ -265,12 +269,10 @@ export default class {
   }
 
   #isBidBalanceEnough = (balance: bigint, costAmount: bigint) => {
-    // return balance * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
-    return balance * FEE_RATIO >= costAmount * (FEE_RATIO + FEE)
+    return (balance - ORDER_CELL_MIN_CAPACITY) * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
   }
 
   #isAskBalanceEnough = (balance: bigint, costAmount: bigint) => {
-    // return balance * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
-    return balance * FEE_RATIO >= costAmount * (FEE_RATIO + FEE)
+    return balance * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
   }
 }
