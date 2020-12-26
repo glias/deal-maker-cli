@@ -86,7 +86,7 @@ export default class {
       outputs: [dealMakerCell.output, ...outputs],
       outputsData: [dealMakerCell.data, ...outputsData],
     }
-    this.minerFee = BigInt(getTransactionSize(rawTx)) * FEE_RATIO
+    this.minerFee = BigInt(getTransactionSize(rawTx) * 1000)
     rawTx.outputs[0].capacity = `0x${(dealMaker.capacity - this.minerFee).toString(16)}`
     return rawTx
   }
@@ -265,10 +265,12 @@ export default class {
   }
 
   #isBidBalanceEnough = (balance: bigint, costAmount: bigint) => {
+    // return balance * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
     return balance * FEE_RATIO >= costAmount * (FEE_RATIO + FEE)
   }
 
   #isAskBalanceEnough = (balance: bigint, costAmount: bigint) => {
+    // return balance * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
     return balance * FEE_RATIO >= costAmount * (FEE_RATIO + FEE)
   }
 }

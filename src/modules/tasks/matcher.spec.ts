@@ -2,62 +2,40 @@ import Matcher from './matcher'
 import type { OrderDto } from '../orders/order.dto'
 import { OrderType } from '../orders/order.entity'
 import { encodeOrderData, MATCH_ORDERS_CELL_DEPS } from '../../utils'
+import { PRICE, BASE_SCRIPTS, BASE_BID_ORDER, BASE_ASK_ORDER } from '../../mock/orders'
+
+const getOrder = (order: {
+  type: 'bid' | 'ask'
+  capacity: bigint
+  price: Record<'effect' | 'exponent', bigint>
+  sudtAmount: bigint
+  orderAmount: bigint
+}): OrderDto => {
+  const base = order.type === 'ask' ? BASE_ASK_ORDER : BASE_BID_ORDER
+  return {
+    ...base,
+    price: order.price,
+    output: JSON.stringify({
+      ...BASE_SCRIPTS,
+      capacity: `0x${order.capacity.toString(16)}`,
+      data: encodeOrderData({
+        sudtAmount: order.sudtAmount,
+        orderAmount: order.orderAmount,
+        price: order.price,
+        type: order.type === 'ask' ? '01' : '00',
+        version: '01',
+      }),
+    }),
+  }
+}
 
 describe('Test Match', () => {
-  const PRICE = {
-    NINE: {
-      effect: BigInt('900000000000000000'),
-      exponent: BigInt(-17),
-    },
-    NINE_DOT_FIVE: {
-      effect: BigInt('950000000000000000'),
-      exponent: BigInt(-17),
-    },
-    TEN: {
-      effect: BigInt('1000000000000000000'),
-      exponent: BigInt(-17),
-    },
-    ELEVEN: {
-      effect: BigInt('1100000000000000000'),
-      exponent: BigInt(-17),
-    },
-  }
-
   const dealMakerCell: RawTransactionParams.Cell = {
     data: '0x',
     lock: { codeHash: '0x', hashType: 'data', args: '0x' },
     type: { codeHash: '0x', hashType: 'data', args: '0x' },
     capacity: '0x0',
     outPoint: { txHash: '0x0', index: '0x0' },
-  }
-
-  const baseScripts = {
-    lock: {
-      code_hash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
-      hash_type: 'data',
-      args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
-    },
-    type: {
-      code_hash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
-      hash_type: 'type',
-      args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-    },
-  }
-  const baseBidOrder: OrderDto = {
-    id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
-    tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-    type: OrderType.Bid,
-    price: PRICE.NINE,
-    blockNumber: 55,
-    output: JSON.stringify({ ...baseScripts, capacity: ``, data: `` }),
-  }
-  const baseAskOrder: OrderDto = {
-    id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
-    tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-    type: OrderType.Ask,
-    price: PRICE.NINE,
-    blockNumber: 55,
-    output: JSON.stringify({ ...baseScripts, capacity: '', data: '' }),
   }
 
   afterEach(() => {
@@ -68,37 +46,20 @@ describe('Test Match', () => {
     describe('Full match', () => {
       it('1 Ask 1 Bid', () => {
         expect.assertions(5)
-        const bidOrder: OrderDto = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90_270_000_000).toString(16)}`,
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'),
-              orderAmount: BigInt('10000000000'),
-              price: PRICE.NINE,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
-
-        const askOrder = {
-          ...baseAskOrder,
+          capacity: BigInt(902.7 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(100 * 10 ** 8),
+        })
+        const askOrder = getOrder({
+          type: 'ask',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // sudt 100.3
-              orderAmount: BigInt('90000000000'), // order amount 900
-              price: PRICE.NINE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8), // sudt 100.3
+          orderAmount: BigInt(900 * 10 ** 8), // order amount 900
+        })
         const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
         matcher.match()
 
@@ -111,52 +72,27 @@ describe('Test Match', () => {
       })
 
       it('2 Ask 1 Bid', () => {
-        const bidOrder = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(220_660_000_000).toString(16)}`, // 2206.6 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // 0 sudt
-              orderAmount: BigInt('22000000000'), // 220 sudt
-              price: PRICE.TEN,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
-
-        const askOrder_1 = {
-          ...baseAskOrder,
+          capacity: BigInt(2206.6 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(220 * 10 ** 8),
+        })
+        const askOrder_1 = getOrder({
+          type: 'ask',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('12036000000'), // 120.36 sudt
-              orderAmount: BigInt('120000000000'), // 1200 ckb order amount
-              price: PRICE.TEN,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(120.36 * 10 ** 8),
+          orderAmount: BigInt(1200 * 10 ** 8),
+        })
+        const askOrder_2 = getOrder({
+          type: 'ask',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // 100.3 sudt
-              orderAmount: BigInt('100000000000'), // 1000 ckb order amount
-              price: PRICE.TEN,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(1000 * 10 ** 8),
+        })
 
         expect.assertions(5)
         const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
@@ -174,54 +110,30 @@ describe('Test Match', () => {
       })
 
       describe('Skip bid order whose balance is not enough for cost and fee', () => {
-        const bidOrderToSkip = {
-          ...baseBidOrder,
+        const bidOrderToSkip = getOrder({
+          type: 'bid',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90269999999).toString(16)}`,
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // sudt 0
-              orderAmount: BigInt('10000000000'), // order amount 100
-              price: PRICE.NINE,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(902_69999999),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(100 * 10 ** 8),
+        })
         it('continue the loop if the bid order is not a partially matched one', () => {
           expect.assertions(5)
-          const bidOrder = {
-            ...baseBidOrder,
+          const bidOrder = getOrder({
+            type: 'bid',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: encodeOrderData({
-                sudtAmount: BigInt('0'), // sudt 0
-                orderAmount: BigInt('10000000000'), // order amount 100
-                price: PRICE.NINE,
-                type: '00',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(902.7 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(100 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
+          const askOrder = getOrder({
+            type: 'ask',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: encodeOrderData({
-                sudtAmount: BigInt('10030000000'), // sudt 100.3
-                orderAmount: BigInt('90000000000'), // order amount 900
-                price: PRICE.NINE,
-                type: '01',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(0),
+            sudtAmount: BigInt(100.3 * 10 ** 8),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
           const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
           matcher.match()
 
@@ -235,37 +147,22 @@ describe('Test Match', () => {
 
         it('break the loop if the bid order is a partially matched one', () => {
           expect.assertions(2)
-          const bidOrder = {
-            ...baseBidOrder,
+          const bidOrder = getOrder({
+            type: 'bid',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: encodeOrderData({
-                sudtAmount: BigInt('0'), // sudt 0
-                orderAmount: BigInt('10000000000'), // order amount 100
-                price: PRICE.NINE,
-                type: '00',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(902.7 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(100 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
+          const askOrder = getOrder({
+            type: 'ask',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: encodeOrderData({
-                sudtAmount: BigInt('10030000000'), // sudt 100.3
-                orderAmount: BigInt('90000000000'), // order amount 900
-                price: PRICE.NINE,
-                type: '01',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(0),
+            sudtAmount: BigInt(100.3 * 10 ** 8),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
+
           const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
           matcher.bidOrderList[0].part = true
           matcher.match()
@@ -275,54 +172,31 @@ describe('Test Match', () => {
       })
 
       describe('Skip ask order whose balance is not enough for cost and fee', () => {
-        const askOrderToSkip = {
-          ...baseAskOrder,
+        const askOrderToSkip = getOrder({
+          type: 'ask',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('10029999999'), // sudt 100.29999999
-              orderAmount: BigInt('90000000000'), // order amount 900
-              price: PRICE.NINE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.29999999 * 10 ** 8),
+          orderAmount: BigInt(900 * 10 ** 8),
+        })
         it('continue the loop if the ask order is not a partially matched one', () => {
           expect.assertions(5)
-          const bidOrder = {
-            ...baseBidOrder,
+          const bidOrder = getOrder({
+            type: 'bid',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: encodeOrderData({
-                sudtAmount: BigInt('0'), // sudt 0
-                orderAmount: BigInt('10000000000'), // order amount 100
-                price: PRICE.NINE,
-                type: '00',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(902.7 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(100 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
+          const askOrder = getOrder({
+            type: 'ask',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: encodeOrderData({
-                sudtAmount: BigInt(10_030_000_000), // sudt 100.3
-                orderAmount: BigInt(90_000_000_000), // order amount 900
-                price: PRICE.NINE,
-                type: '01',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(0),
+            sudtAmount: BigInt(100.3 * 10 ** 8),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
+
           const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
           matcher.match()
 
@@ -336,37 +210,21 @@ describe('Test Match', () => {
 
         it('break the loop if the ask order is a partially matched one', () => {
           expect.assertions(2)
-          const bidOrder = {
-            ...baseBidOrder,
+          const bidOrder = getOrder({
+            type: 'bid',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: encodeOrderData({
-                sudtAmount: BigInt(0), // sudt 0
-                orderAmount: BigInt(10_000_000_000), // order amount 100
-                price: PRICE.NINE,
-                type: '00',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(902.7 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(100 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
+          const askOrder = getOrder({
+            type: 'ask',
             price: PRICE.NINE,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: encodeOrderData({
-                sudtAmount: BigInt(10_030_000_000), // sudt 100.3
-                orderAmount: BigInt(90_000_000_000), // order amount 900
-                price: PRICE.NINE,
-                type: '01',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(0),
+            sudtAmount: BigInt(100.3 * 10 ** 8),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
           const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
           matcher.askOrderList[0].part = true
           matcher.match()
@@ -378,36 +236,21 @@ describe('Test Match', () => {
 
     describe('Partial match', () => {
       describe('Ask Order > Bid Order', () => {
-        const bidOrder: OrderDto = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(120_360_000_000).toString(16)}`, // 1203.6 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // 0 sudt
-              orderAmount: BigInt('9000000000'), // 90 sudt order amount
-              price: PRICE.TEN,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
-        const askOrder = {
-          ...baseAskOrder,
+          capacity: BigInt(12036 * 10 ** 7),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(90 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // 100.3 sudt
-              orderAmount: BigInt('120000000000'), // 1200 ckb order amount
-              price: PRICE.TEN,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(1200 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount when no bid order left', () => {
           expect.assertions(5)
@@ -424,21 +267,13 @@ describe('Test Match', () => {
         })
 
         describe('Skip bid order whose balance is not enough for cost and fee', () => {
-          const bidOrderToSkip = {
-            ...baseBidOrder,
+          const bidOrderToSkip = getOrder({
+            type: 'bid',
             price: PRICE.TEN,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90_269_999_999).toString(16)}`, // 902.69999999 ckb
-              data: encodeOrderData({
-                sudtAmount: BigInt('0'), // 0 sudt
-                orderAmount: BigInt('9000000000'), // 90 sudt order amount
-                price: PRICE.TEN,
-                type: '00',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(902.69999999 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(90 * 10 ** 8),
+          })
 
           it('continue the loop if the bid order is not a partially matched one', () => {
             expect.assertions(5)
@@ -466,24 +301,13 @@ describe('Test Match', () => {
         })
 
         describe('Skip ask order whose balance is not enough for cost and fee', () => {
-          const askOrderToSkip = {
-            ...baseAskOrder,
+          const askOrderToSkip = getOrder({
+            type: 'ask',
             price: PRICE.TEN,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0', // 0 ckb
-              data: encodeOrderData({
-                sudtAmount: BigInt('9026999999'), // 90.26999999 sudt
-                orderAmount: BigInt('120000000000'), // 1200 ckb order amount
-                price: {
-                  effect: BigInt('1000000000000000000'),
-                  exponent: BigInt(-17),
-                },
-                type: '01',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(0),
+            sudtAmount: BigInt(90_26999999),
+            orderAmount: BigInt(1200 * 10 ** 8),
+          })
 
           it('continue the loop if the ask order is not a partially matched one', () => {
             expect.assertions(5)
@@ -512,36 +336,20 @@ describe('Test Match', () => {
       })
 
       describe('Ask Order < Bid Order', () => {
-        const bidOrder: OrderDto = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(120_360_000_000).toString(16)}`, // 1203.6 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // 0 sudt
-              orderAmount: BigInt('12000000000'), // 120 sudt order amount
-              price: PRICE.TEN,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
-        const askOrder = {
-          ...baseAskOrder,
+          capacity: BigInt(12036 * 10 ** 7),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(120 * 10 ** 8),
+        })
+        const askOrder = getOrder({
+          type: 'ask',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // 100.3 sudt
-              orderAmount: BigInt('90000000000'), // 900 ckb order amount
-              price: PRICE.TEN,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(900 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount when no ask order left', () => {
           expect.assertions(5)
@@ -558,21 +366,13 @@ describe('Test Match', () => {
         })
 
         describe('Skip bid order whose balance is not enough for cost and fee', () => {
-          const bidOrderToSkip = {
-            ...baseBidOrder,
+          const bidOrderToSkip = getOrder({
+            type: 'bid',
             price: PRICE.TEN,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90_269_999_999).toString(16)}`, // 902.69999999 ckb
-              data: encodeOrderData({
-                sudtAmount: BigInt('0'), // 0 sudt
-                orderAmount: BigInt('12000000000'), // 120 sudt order amount
-                price: PRICE.TEN,
-                type: '00',
-                version: '01',
-              }),
-            }),
-          }
+            capacity: BigInt(902.69999999 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(120 * 10 ** 8),
+          })
 
           it('continue the loop if the bid order is not a partially matched one', () => {
             expect.assertions(5)
@@ -599,22 +399,13 @@ describe('Test Match', () => {
           })
         })
         describe('Skip ask order whose balance is not enough for cost and fee', () => {
-          const askOrderToSkip = {
-            ...baseAskOrder,
+          const askOrderToSkip = getOrder({
+            type: 'ask',
             price: PRICE.TEN,
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0', // 0 ckb
-              data: encodeOrderData({
-                sudtAmount: BigInt('9026999999'), // 90.26999999 sudt
-                orderAmount: BigInt('90000000000'), // 900 ckb order amount
-                price: PRICE.TEN,
-                type: '01',
-                version: '01',
-              }),
-            }),
-          }
-
+            capacity: BigInt(0),
+            sudtAmount: BigInt(90_26999999),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
           it('continue the loop if the ask order is not a partially matched one', () => {
             expect.assertions(5)
             // traded 900 ckb and 90 sudt
@@ -642,52 +433,29 @@ describe('Test Match', () => {
       })
 
       describe('2 Ask Order < 1 Bid Order', () => {
-        const bidOrder = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(230_660_000_000).toString(16)}`, // 2306.6 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // 0 sudt
-              orderAmount: BigInt('23000000000'), // 230 sudt order amount
-              price: PRICE.TEN,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(2306.6 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(230 * 10 ** 8),
+        })
 
-        const askOrder_1 = {
-          ...baseAskOrder,
+        const askOrder_1 = getOrder({
+          type: 'ask',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('12036000000'), // 120.36 sudt
-              orderAmount: BigInt('108000000000'), // 1080 ckb order amount
-              price: PRICE.NINE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(120_36 * 10 ** 6),
+          orderAmount: BigInt(1080 * 10 ** 8),
+        })
+
+        const askOrder_2 = getOrder({
+          type: 'ask',
           price: PRICE.NINE_DOT_FIVE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // 100.3 sudt
-              orderAmount: BigInt('95000000000'), // 950 ckb order amount
-              price: PRICE.NINE_DOT_FIVE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(950 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount', () => {
           expect.assertions(5)
@@ -712,52 +480,29 @@ describe('Test Match', () => {
       })
 
       describe('2 Ask Order > 1 Bid Order', () => {
-        const bidOrder = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(230690000000).toString(16)}`, // 2306.9 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // 0 sudt
-              orderAmount: BigInt('23000000000'), // 230 sudt order amount / 2300 ckb
-              price: PRICE.TEN,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(2306.9 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(230 * 10 ** 8),
+        })
 
-        const askOrder_1 = {
-          ...baseAskOrder,
+        const askOrder_1 = getOrder({
+          type: 'ask',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('12036000000'), // 120.36 sudt
-              orderAmount: BigInt('120000000000'), // 1200 ckb order amount / 120 sudt
-              price: PRICE.TEN,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(120_36 * 10 ** 6),
+          orderAmount: BigInt(1200 * 10 ** 8),
+        })
+
+        const askOrder_2 = getOrder({
+          type: 'ask',
           price: PRICE.TEN,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: encodeOrderData({
-              sudtAmount: BigInt('12036000000'), // 120.36 sudt
-              orderAmount: BigInt('120000000000'), // 1200 ckb order amount / 120 sudt
-              price: PRICE.TEN,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(120_36 * 10 ** 6),
+          orderAmount: BigInt(1200 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount', () => {
           expect.assertions(5)
@@ -775,34 +520,17 @@ describe('Test Match', () => {
     })
 
     describe("Ask price is greater than bid price, can't match", () => {
-      const askOrder_7 = {
-        ...baseAskOrder,
+      const askOrder_7 = getOrder({
+        type: 'ask',
         price: PRICE.ELEVEN,
-        output: JSON.stringify({
-          capacity: '0x0',
-          lock: {
-            code_hash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
-            hash_type: 'data',
-            args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
-          },
-          type: {
-            code_hash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
-            hash_type: 'type',
-            args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-          },
-          data: encodeOrderData({
-            sudtAmount: BigInt('10030000000'),
-            orderAmount: BigInt('110000000000'),
-            price: PRICE.ELEVEN,
-            type: '01',
-            version: '01',
-          }),
-        }),
-      }
+        capacity: BigInt(0),
+        sudtAmount: BigInt(100.3 * 10 ** 8),
+        orderAmount: BigInt(1100 * 10 ** 8),
+      })
 
       it('returns empty array', () => {
         expect.assertions(3)
-        const matcher = new Matcher([baseBidOrder], [askOrder_7], dealMakerCell)
+        const matcher = new Matcher([BASE_BID_ORDER], [askOrder_7], dealMakerCell)
         matcher.match()
 
         expect(matcher.matchedOrderList).toHaveLength(0)
@@ -813,58 +541,28 @@ describe('Test Match', () => {
     })
 
     describe('Handle order whose balance is not enough', () => {
-      const bidOrder = {
-        ...baseBidOrder,
-        output: JSON.stringify({
-          ...baseScripts,
-          capacity: `0x${(230660000000).toString(16)}`, // 2306.6 ckb
-          data: encodeOrderData({
-            sudtAmount: BigInt('0'), // 0 sudt
-            orderAmount: BigInt('23000000000'), // 230 sudt order amount / 2300 ckb
-            price: {
-              effect: BigInt('1000000000000000000'),
-              exponent: BigInt(-17),
-            },
-            type: '00',
-            version: '01',
-          }),
-        }),
-      }
+      const bidOrder = getOrder({
+        type: 'bid',
+        price: PRICE.TEN,
+        capacity: BigInt(2306.6 * 10 ** 8),
+        sudtAmount: BigInt(0),
+        orderAmount: BigInt(230 * 10 ** 8),
+      })
 
-      const askOrder_1 = {
-        ...baseAskOrder,
-        output: JSON.stringify({
-          ...baseScripts,
-          capacity: '0x0', // 0 ckb
-          data: encodeOrderData({
-            sudtAmount: BigInt('12036000000'), // 120.36 sudt
-            orderAmount: BigInt('120000000000'), // 1200 ckb order amount / 120 sudt
-            price: {
-              effect: BigInt('1000000000000000000'),
-              exponent: BigInt(-17),
-            },
-            type: '01',
-            version: '01',
-          }),
-        }),
-      }
-      const askOrder_2 = {
-        ...baseAskOrder,
-        output: JSON.stringify({
-          ...baseScripts,
-          capacity: '0x0', // 0 ckb
-          data: encodeOrderData({
-            sudtAmount: BigInt('12036000000'), // 120.36 sudt
-            orderAmount: BigInt('120000000000'), // 1200 ckb order amount / 120 sudt
-            price: {
-              effect: BigInt('1000000000000000000'),
-              exponent: BigInt(-17),
-            },
-            type: '01',
-            version: '01',
-          }),
-        }),
-      }
+      const askOrder_1 = getOrder({
+        type: 'ask',
+        price: PRICE.TEN,
+        capacity: BigInt(0),
+        sudtAmount: BigInt(120_36 * 10 ** 6),
+        orderAmount: BigInt(1200 * 10 ** 8),
+      })
+      const askOrder_2 = getOrder({
+        type: 'ask',
+        price: PRICE.TEN,
+        capacity: BigInt(0),
+        sudtAmount: BigInt(120_36 * 10 ** 6),
+        orderAmount: BigInt(1200 * 10 ** 8),
+      })
 
       it('skip unmeeting order', () => {
         expect.assertions(5)
@@ -883,52 +581,29 @@ describe('Test Match', () => {
     describe('Skip ask order whose order amount is 0', () => {
       it('Skip 1st ask order', () => {
         expect.assertions(5)
-        const bidOrder = {
-          ...baseBidOrder,
+        const bidOrder = getOrder({
+          type: 'bid',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)}`,
-            data: encodeOrderData({
-              sudtAmount: BigInt(0), // sudt 0
-              orderAmount: BigInt('10000000000'), // order amount 100
-              price: PRICE.NINE,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(902_70000000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(100 * 10 ** 8),
+        })
+        const askOrder_1 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(0),
+        })
 
-        const askOrder_1 = {
-          ...baseAskOrder,
+        const askOrder_2 = getOrder({
+          type: 'ask',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // sudt 100.3
-              orderAmount: BigInt('0'), // order amount 0
-              price: PRICE.NINE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
-          price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // sudt 100.3
-              orderAmount: BigInt('90000000000'), // order amount 900
-              price: PRICE.NINE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(900 * 10 ** 8),
+        })
+
         const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
         matcher.match()
 
@@ -944,53 +619,29 @@ describe('Test Match', () => {
     describe('Skip bid order whose order amount is 0', () => {
       it('Skip 1st bid order', () => {
         expect.assertions(5)
-        const bidOrder_1 = {
-          ...baseBidOrder,
+        const bidOrder_1 = getOrder({
+          type: 'bid',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)} `,
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // sudt 0
-              orderAmount: BigInt('0'), // order amount 0
-              price: PRICE.NINE,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(902_70000000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(0),
+        })
 
-        const bidOrder_2 = {
-          ...baseBidOrder,
+        const bidOrder_2 = getOrder({
+          type: 'bid',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)} `,
-            data: encodeOrderData({
-              sudtAmount: BigInt('0'), // sudt 0
-              orderAmount: BigInt('10000000000'), // order amount 100
-              price: PRICE.NINE,
-              type: '00',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(902_70000000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(100 * 10 ** 8),
+        })
 
-        const askOrder = {
-          ...baseAskOrder,
+        const askOrder = getOrder({
+          type: 'ask',
           price: PRICE.NINE,
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: encodeOrderData({
-              sudtAmount: BigInt('10030000000'), // sudt 100.3
-              orderAmount: BigInt('90000000000'), // order amount 900
-              price: PRICE.NINE,
-              type: '01',
-              version: '01',
-            }),
-          }),
-        }
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100.3 * 10 ** 8),
+          orderAmount: BigInt(900 * 10 ** 8),
+        })
         const matcher = new Matcher([bidOrder_1, bidOrder_2], [askOrder], dealMakerCell)
         matcher.match()
 
