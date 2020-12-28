@@ -209,7 +209,7 @@
           (_order, _idx) =>
             `<tr>
             <td>${_idx + 1}</td>
-            <td>${numberFormat.format(BigInt(_order.price))}</td>
+            <td>${_order.price}</td>
             <td>${numberFormat.format(BigInt(_order.capacity) - 17900000000n)}</td>
             <td>${numberFormat.format(BigInt(_order.orderAmount))}</td>
             <td>${numberFormat.format(BigInt(_order.sudtAmount))}</td>

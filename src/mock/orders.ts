@@ -4,12 +4,12 @@ import { OrderType } from '../modules/orders/order.entity'
 
 export const PRICE = {
   ONE: {
-    effect: BigInt('100000000000000000000'),
-    exponent: BigInt(0),
+    effect: BigInt('1000000000000000000'),
+    exponent: BigInt(-18),
   },
   FIVE: {
-    effect: BigInt('500000000000000000000'),
-    exponent: BigInt(0),
+    effect: BigInt('500000000000000000'),
+    exponent: BigInt(-17),
   },
   EIGHT: {
     effect: BigInt('800000000000000000'),

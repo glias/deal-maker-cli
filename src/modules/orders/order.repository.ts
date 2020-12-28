@@ -21,7 +21,7 @@ class OrderRepository extends Repository<Order> {
   }
 
   async getOrders(pageNo: number, type: OrderType, pendingOrderIds: string[] = [], sudtTypeArgs: string) {
-    const order = type === OrderType.Bid ? 'ASC' : 'DESC'
+    const order = type === OrderType.Bid ? 'DESC' : 'ASC'
     return this.createQueryBuilder('order')
       .where('order.type = :type', { type })
       .andWhere('order.tokenId = :tokenId', { tokenId: sudtTypeArgs })

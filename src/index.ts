@@ -3,7 +3,7 @@ import fs from 'fs'
 import { CronJob } from 'cron'
 import boostrap from './bootstrap'
 import { container, modules } from './container'
-import { logger, parseOrderData, UI_SUDT_TYPE_ARGS, WEB_UI_PORT } from './utils'
+import { logger, parseOrderData, UI_SUDT_TYPE_ARGS, WEB_UI_PORT, getPrice } from './utils'
 import ConfigService from './modules/config'
 import TasksService from './modules/tasks'
 import OrdersService from './modules/orders'
@@ -123,7 +123,7 @@ export default class DealMaker {
         const output = JSON.parse(order.output)
         const { sudtAmount, orderAmount } = parseOrderData(output.data)
         return {
-          price: order.price.toString(),
+          price: getPrice(order.price).toFormat(),
           sudtAmount: sudtAmount.toString(),
           orderAmount: orderAmount.toString(),
           outPoint: order.id,
