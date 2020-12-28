@@ -13,6 +13,7 @@ import {
   ORDER_CELL_SIZE,
   SHANNONS_RATIO,
 } from '../../utils'
+import { Lock } from '../locks/lock.entity'
 
 type Price = Record<'effect' | 'exponent', bigint>
 type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount', bigint> & { type: OrderType; price: Price }
@@ -25,6 +26,7 @@ interface MatchedOrder {
 }
 
 interface Order extends MatchedOrder {
+  ownerLock: Lock | null
   price: Price
   part?: boolean
 }
@@ -95,9 +97,14 @@ export default class {
     return rawTx
   }
 
-  constructor(bidOrderList: OrderDto[], askOrderList: OrderDto[], dealMakerCell: RawTransactionParams.Cell) {
-    this.bidOrderList = bidOrderList.map(this.#toOrder).filter(o => o) as Order[]
-    this.askOrderList = askOrderList.map(this.#toOrder).filter(o => o) as Order[]
+  constructor(
+    bidOrderList: OrderDto[],
+    askOrderList: OrderDto[],
+    dealMakerCell: RawTransactionParams.Cell,
+    ownerLockList: Lock[],
+  ) {
+    this.bidOrderList = bidOrderList.map(order => this.#toOrder(order, ownerLockList)).filter(o => o) as Order[]
+    this.askOrderList = askOrderList.map(order => this.#toOrder(order, ownerLockList)).filter(o => o) as Order[]
     this.dealMakerCell = dealMakerCell
   }
 
@@ -111,6 +118,16 @@ export default class {
       const askOrder = this.askOrderList[0]
 
       const { bidAmount, askAmount } = formatDealInfo(bidOrder.info, askOrder.info)
+
+      // REFACTOR: cancel this round if order is able to be claimed but lock script is not found
+      if (!askOrder.ownerLock) {
+        this.askOrderList.shift()
+        continue
+      }
+      if (!bidOrder.ownerLock) {
+        this.bidOrderList.shift()
+        continue
+      }
 
       if (!askAmount.orderAmount || !askAmount.costAmount) {
         this.askOrderList.shift()
@@ -253,7 +270,7 @@ export default class {
     }
   }
 
-  #toOrder = (order: OrderDto): Order | null => {
+  #toOrder = (order: OrderDto, ownerLockList: Lock[]): Order | null => {
     try {
       const output = JSON.parse(order.output)
       const info = parseOrderData(output.data)
@@ -262,6 +279,7 @@ export default class {
         scripts: { lock: output.lock, type: output.type },
         price: order.price,
         info: { capacity: BigInt(output.capacity), ...info, type: +info.type },
+        ownerLock: ownerLockList.find(l => l.lockHash === order.ownerLockHash) ?? null,
       }
     } catch {
       return null

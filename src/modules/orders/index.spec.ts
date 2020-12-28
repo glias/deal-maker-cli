@@ -52,6 +52,7 @@ describe('Test orders service', () => {
         priceEffect: BigInt('5000000000000000000').toString(16),
         priceExponent: -18,
         type: OrderType.Ask,
+        ownerLockHash: cellToSave.cell_output.lock.args,
         output: JSON.stringify({
           ...cellToSave.cell_output,
           capacity: cellToSave.cell_output.capacity,

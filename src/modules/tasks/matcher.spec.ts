@@ -29,6 +29,13 @@ const getOrder = (order: {
   }
 }
 
+const getMockLock = ({ ownerLockHash }: { ownerLockHash: string }) => ({
+  args: BASE_SCRIPTS.lock.args,
+  hashType: BASE_SCRIPTS.lock.hash_type as CKBComponents.ScriptHashType,
+  codeHash: BASE_SCRIPTS.lock.code_hash,
+  lockHash: ownerLockHash,
+})
+
 const ORDER_CELL_MIN_CAPACITY = BigInt(ORDER_CELL_SIZE) * BigInt(SHANNONS_RATIO)
 
 describe('Test Match', () => {
@@ -62,7 +69,7 @@ describe('Test Match', () => {
           sudtAmount: BigInt(9_02708125),
           orderAmount: BigInt(81 * 10 ** 8),
         })
-        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
+        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
         matcher.match()
 
         expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -100,7 +107,12 @@ describe('Test Match', () => {
         })
 
         expect.assertions(5)
-        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        const matcher = new Matcher(
+          [bidOrder],
+          [askOrder_1, askOrder_2],
+          dealMakerCell,
+          [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+        )
         matcher.match()
         expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
           40_50000000,
@@ -138,7 +150,12 @@ describe('Test Match', () => {
             sudtAmount: BigInt(9_02708125),
             orderAmount: BigInt(81 * 10 ** 8),
           })
-          const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrderToSkip, bidOrder],
+            [askOrder],
+            dealMakerCell,
+            [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+          )
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -170,7 +187,12 @@ describe('Test Match', () => {
             orderAmount: BigInt(900 * 10 ** 8),
           })
 
-          const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrderToSkip, bidOrder],
+            [askOrder],
+            dealMakerCell,
+            [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+          )
           matcher.bidOrderList[0].part = true
           matcher.match()
           expect(matcher.matchedOrderList).toHaveLength(1)
@@ -203,7 +225,12 @@ describe('Test Match', () => {
             orderAmount: BigInt(81 * 10 ** 8),
           })
 
-          const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrderToSkip, askOrder],
+            dealMakerCell,
+            [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+          )
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -234,7 +261,12 @@ describe('Test Match', () => {
             sudtAmount: BigInt(100.3 * 10 ** 8),
             orderAmount: BigInt(900 * 10 ** 8),
           })
-          const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrderToSkip, askOrder],
+            dealMakerCell,
+            [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+          )
           matcher.askOrderList[0].part = true
           matcher.match()
           expect(matcher.matchedOrderList).toHaveLength(1)
@@ -263,7 +295,7 @@ describe('Test Match', () => {
 
         it('return correct capacity and sudt amount when no bid order left', () => {
           expect.assertions(5)
-          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
+          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -288,7 +320,12 @@ describe('Test Match', () => {
 
           it('continue the loop if the bid order is not a partially matched one', () => {
             expect.assertions(5)
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.match()
 
             expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -304,7 +341,12 @@ describe('Test Match', () => {
 
           it('break the loop if the bid order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.bidOrderList[0].part = true
             matcher.match()
 
@@ -324,7 +366,12 @@ describe('Test Match', () => {
 
           it('continue the loop if the ask order is not a partially matched one', () => {
             expect.assertions(5)
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+            )
             matcher.match()
 
             expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -340,7 +387,12 @@ describe('Test Match', () => {
 
           it('break the loop if the ask order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+            )
             matcher.askOrderList[0].part = true
             matcher.match()
 
@@ -369,7 +421,7 @@ describe('Test Match', () => {
 
         it('return correct capacity and sudt amount when no ask order left', () => {
           expect.assertions(5)
-          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
+          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -394,7 +446,12 @@ describe('Test Match', () => {
 
           it('continue the loop if the bid order is not a partially matched one', () => {
             expect.assertions(5)
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.match()
 
             expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -410,7 +467,12 @@ describe('Test Match', () => {
 
           it('break the loop if the bid order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.bidOrderList[0].part = true
             matcher.match()
 
@@ -429,7 +491,12 @@ describe('Test Match', () => {
           })
           it('continue the loop if the ask order is not a partially matched one', () => {
             expect.assertions(5)
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+            )
             matcher.match()
 
             expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -445,7 +512,12 @@ describe('Test Match', () => {
 
           it('break the loop if the ask order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrderToSkip].map(getMockLock),
+            )
             matcher.askOrderList[0].part = true
             matcher.match()
 
@@ -482,7 +554,12 @@ describe('Test Match', () => {
 
         it('return correct capacity and sudt amount', () => {
           expect.assertions(5)
-          const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrder_1, askOrder_2],
+            dealMakerCell,
+            [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+          )
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -529,7 +606,12 @@ describe('Test Match', () => {
 
         it('return correct capacity and sudt amount', () => {
           expect.assertions(5)
-          const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrder_1, askOrder_2],
+            dealMakerCell,
+            [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+          )
           matcher.match()
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -561,7 +643,12 @@ describe('Test Match', () => {
 
       it('returns empty array', () => {
         expect.assertions(3)
-        const matcher = new Matcher([BASE_BID_ORDER], [askOrderWithHigherPrice], dealMakerCell)
+        const matcher = new Matcher(
+          [BASE_BID_ORDER],
+          [askOrderWithHigherPrice],
+          dealMakerCell,
+          [BASE_BID_ORDER, askOrderWithHigherPrice].map(getMockLock),
+        )
         matcher.match()
 
         expect(matcher.matchedOrderList).toHaveLength(0)
@@ -597,7 +684,12 @@ describe('Test Match', () => {
 
       it('skip unmet order', () => {
         expect.assertions(5)
-        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        const matcher = new Matcher(
+          [bidOrder],
+          [askOrder_1, askOrder_2],
+          dealMakerCell,
+          [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+        )
         matcher.match()
 
         expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -638,7 +730,12 @@ describe('Test Match', () => {
           orderAmount: BigInt(81 * 10 ** 8),
         })
 
-        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        const matcher = new Matcher(
+          [bidOrder],
+          [askOrder_1, askOrder_2],
+          dealMakerCell,
+          [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+        )
         matcher.match()
 
         expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -679,7 +776,12 @@ describe('Test Match', () => {
           sudtAmount: BigInt(9_02708125),
           orderAmount: BigInt(81 * 10 ** 8),
         })
-        const matcher = new Matcher([bidOrder_1, bidOrder_2], [askOrder], dealMakerCell)
+        const matcher = new Matcher(
+          [bidOrder_1, bidOrder_2],
+          [askOrder],
+          dealMakerCell,
+          [bidOrder_1, bidOrder_2, askOrder].map(getMockLock),
+        )
         matcher.match()
 
         expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
@@ -697,11 +799,11 @@ describe('Test Match', () => {
 
   describe('Transaction', () => {
     it('should return null is no matched orders', () => {
-      const matcher = new Matcher([], [], dealMakerCell)
+      const matcher = new Matcher([], [], dealMakerCell, [])
       expect(matcher.rawTx).toBeNull()
     })
     it('should return tx when orders matched', () => {
-      const matcher = new Matcher([], [], dealMakerCell)
+      const matcher = new Matcher([], [], dealMakerCell, [])
       matcher.dealMakerCell = dealMakerCell
       matcher.matchedOrderList = [
         {

@@ -146,6 +146,10 @@ class TasksService {
           this.#ordersService.getPendingDeals(),
         ])
 
+        const ownerLockList = await this.#locksService.findByLockHashList(
+          [...bidOrderList, ...askOrderList].map(o => o.ownerLockHash),
+        )
+
         if (!askOrderList.length || !bidOrderList.length) {
           return false
         }
@@ -173,7 +177,7 @@ class TasksService {
           dealMakerCells.find(c => c.type) ||
           dealMakerCells.sort((c1, c2) => Number(BigInt(c2.capacity) - BigInt(c1.capacity)))[0]
 
-        const matcher = new Matcher(bidOrderList, askOrderList, dealMakerCell)
+        const matcher = new Matcher(bidOrderList, askOrderList, dealMakerCell, ownerLockList)
 
         matcher.match()
         if (!matcher.rawTx) {

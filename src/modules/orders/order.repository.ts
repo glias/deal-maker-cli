@@ -62,6 +62,7 @@ class OrderRepository extends Repository<Order> {
           type: cell.type === '00' ? OrderType.Bid : OrderType.Ask,
           priceEffect: cell.price.effect.toString(16).padStart(16, '0'),
           priceExponent: Number(cell.price.exponent),
+          ownerLockHash: cell.output.lock.args,
         })
 
   private isInvalidOrderCell(cell: ReturnType<typeof parseOrderCell>) {

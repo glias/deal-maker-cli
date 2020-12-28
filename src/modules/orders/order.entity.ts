@@ -27,4 +27,7 @@ export class Order {
 
   @Column('varchar')
   output!: string
+
+  @Column('varchar', { name: 'owner_lock_hash' })
+  ownerLockHash!: string
 }

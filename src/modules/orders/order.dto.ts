@@ -6,4 +6,5 @@ export interface OrderDto {
   price: Record<'effect' | 'exponent', bigint>
   blockNumber: number
   output: string
+  ownerLockHash: string
 }

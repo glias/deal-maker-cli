@@ -1,5 +1,5 @@
 import { injectable } from 'inversify'
-import { getConnection } from 'typeorm'
+import { getConnection, In } from 'typeorm'
 import { LockDto } from './lock.dto'
 import { Lock } from './lock.entity'
 import { LockSyncMeta } from './meta.entity'
@@ -22,8 +22,8 @@ class LockService {
     return this.#metaRepository.save(meta)
   }
 
-  getAllLocks = () => {
-    return this.#lockRepository.find()
+  findByLockHashList = (lockHashList: Array<string>) => {
+    return this.#lockRepository.find({ lockHash: In(lockHashList) })
   }
 
   findByLockHash = (lockHash: string) => {
