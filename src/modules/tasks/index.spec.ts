@@ -93,6 +93,7 @@ class MockLocksService {
   getBlockNumber = jest.fn().mockReturnValue('0')
   setBlockNumber = jest.fn().mockResolvedValue(undefined)
   addLockList = jest.fn().mockResolvedValue(undefined)
+  findByLockHashList = jest.fn().mockResolvedValue([])
 }
 
 describe('Test tasks module', () => {

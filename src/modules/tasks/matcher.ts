@@ -12,6 +12,7 @@ import {
   bigIntToUint128Le,
   ORDER_CELL_SIZE,
   SHANNONS_RATIO,
+  SUDT_CELL_SIZE,
 } from '../../utils'
 import { Lock } from '../locks/lock.entity'
 
@@ -23,10 +24,10 @@ interface MatchedOrder {
   id: string
   scripts: Scripts
   info: OrderInfo
+  ownerLock: Lock | null
 }
 
 interface Order extends MatchedOrder {
-  ownerLock: Lock | null
   price: Price
   part?: boolean
 }
@@ -50,16 +51,25 @@ export default class {
     const outputs: CKBComponents.CellOutput[] = []
     const outputsData: string[] = []
     this.matchedOrderList.forEach(o => {
-      outputs.push({ capacity: `0x${o.info.capacity.toString(16)}`, ...o.scripts })
-      outputsData.push(
-        encodeOrderData({
-          sudtAmount: o.info.sudtAmount,
-          orderAmount: o.info.orderAmount,
-          price: o.info.price,
-          type: o.info.type === OrderType.Bid ? '00' : '01',
-          version: '01',
-        }),
-      )
+      if (this.#isOrderClaimable(o.info)) {
+        const { lockHash: _, ...lock } = o.ownerLock!
+        const type = o.info.type === OrderType.Bid ? o.scripts.type : null
+        const data = o.info.type === OrderType.Bid ? `0x${bigIntToUint128Le(o.info.sudtAmount)}` : '0x'
+
+        outputs.push({ capacity: `0x${o.info.capacity.toString(16)}`, type, lock })
+        outputsData.push(data)
+      } else {
+        outputs.push({ capacity: `0x${o.info.capacity.toString(16)}`, ...o.scripts })
+        outputsData.push(
+          encodeOrderData({
+            sudtAmount: o.info.sudtAmount,
+            orderAmount: o.info.orderAmount,
+            price: o.info.price,
+            type: o.info.type === OrderType.Bid ? '00' : '01',
+            version: '01',
+          }),
+        )
+      }
       const [txHash, index] = o.id.split('-')
       if (!inputs.find(i => i.previousOutput?.txHash === txHash && i.previousOutput.index === index)) {
         inputs.push({ previousOutput: { txHash, index }, since: '0x0' })
@@ -103,8 +113,13 @@ export default class {
     dealMakerCell: RawTransactionParams.Cell,
     ownerLockList: Lock[],
   ) {
-    this.bidOrderList = bidOrderList.map(order => this.#toOrder(order, ownerLockList)).filter(o => o) as Order[]
-    this.askOrderList = askOrderList.map(order => this.#toOrder(order, ownerLockList)).filter(o => o) as Order[]
+    // REFACTOR: cancel this round if order is able to be claimed but lock script is not found
+    this.bidOrderList = bidOrderList
+      .map(order => this.#toOrder(order, ownerLockList))
+      .filter(o => o?.ownerLock) as Order[]
+    this.askOrderList = askOrderList
+      .map(order => this.#toOrder(order, ownerLockList))
+      .filter(o => o?.ownerLock) as Order[]
     this.dealMakerCell = dealMakerCell
   }
 
@@ -119,22 +134,18 @@ export default class {
 
       const { bidAmount, askAmount } = formatDealInfo(bidOrder.info, askOrder.info)
 
-      // REFACTOR: cancel this round if order is able to be claimed but lock script is not found
-      if (!askOrder.ownerLock) {
-        this.askOrderList.shift()
-        continue
-      }
-      if (!bidOrder.ownerLock) {
-        this.bidOrderList.shift()
-        continue
-      }
-
       if (!askAmount.orderAmount || !askAmount.costAmount) {
+        if (askOrder.part) {
+          break
+        }
         this.askOrderList.shift()
         continue
       }
 
       if (!bidAmount.orderAmount || !bidAmount.costAmount) {
+        if (bidOrder.part) {
+          break
+        }
         this.bidOrderList.shift()
         continue
       }
@@ -251,6 +262,7 @@ export default class {
           capacity: remain,
           type: OrderType.Bid,
         },
+        ownerLock: order.ownerLock,
       })
       this.bidOrderList.shift()
     } else {
@@ -265,6 +277,7 @@ export default class {
           capacity: targetAmount,
           type: OrderType.Ask,
         },
+        ownerLock: order.ownerLock,
       })
       this.askOrderList.shift()
     }
@@ -292,5 +305,27 @@ export default class {
 
   #isAskBalanceEnough = (balance: bigint, costAmount: bigint) => {
     return balance * (FEE_RATIO - FEE) >= costAmount * FEE_RATIO
+  }
+
+  #isOrderClaimable = ({ orderAmount, type, capacity, sudtAmount, price }: OrderInfo) => {
+    if (orderAmount === BigInt(0)) {
+      return true
+    }
+
+    const priceExponent = BigInt(10 ** Math.abs(Number(price.exponent)))
+
+    if (type === OrderType.Bid) {
+      const balance = capacity - BigInt(SUDT_CELL_SIZE) * BigInt(SHANNONS_RATIO)
+      if (price.exponent < 0) {
+        return balance * (FEE_RATIO - FEE) * priceExponent < price.effect * FEE_RATIO
+      }
+      return balance * (FEE_RATIO - FEE) < price.effect * priceExponent * FEE_RATIO
+    }
+
+    const balance = sudtAmount
+    if (price.exponent < 0 && balance * (FEE_RATIO - FEE) * price.effect >= priceExponent * FEE_RATIO) {
+      return false
+    }
+    return true
   }
 }

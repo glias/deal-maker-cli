@@ -822,11 +822,12 @@ describe('Test Match', () => {
           },
           info: {
             sudtAmount: BigInt('10000000000'),
-            orderAmount: BigInt('0'),
+            orderAmount: BigInt('10000000'),
             price: PRICE.NINE,
-            capacity: BigInt('0'),
+            capacity: BigInt('1000000000000000000000000'),
             type: OrderType.Bid,
           },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
         },
         {
           id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
@@ -834,7 +835,7 @@ describe('Test Match', () => {
             lock: {
               codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
               hashType: 'data',
-              args: '0xffffffffffffffffffffffffffffffffffffffff',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
             },
             type: {
               codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
@@ -843,12 +844,13 @@ describe('Test Match', () => {
             },
           },
           info: {
-            sudtAmount: BigInt('0'),
-            orderAmount: BigInt('0'),
+            sudtAmount: BigInt('100000000000000000'),
+            orderAmount: BigInt('10000000000'),
             price: PRICE.NINE,
             capacity: BigInt('90000000000'),
             type: OrderType.Ask,
           },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
         },
       ]
       matcher.dealMakerCapacityAmount = BigInt(100000000)
@@ -881,7 +883,7 @@ describe('Test Match', () => {
             type: { codeHash: '0x', hashType: 'data', args: '0x' },
           },
           {
-            capacity: '0x0',
+            capacity: '0xd3c21bcecceda1000000',
             lock: {
               codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
               hashType: 'data',
@@ -898,7 +900,7 @@ describe('Test Match', () => {
             lock: {
               codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
               hashType: 'data',
-              args: '0xffffffffffffffffffffffffffffffffffffffff',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
             },
             type: {
               codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
@@ -909,8 +911,192 @@ describe('Test Match', () => {
         ],
         outputsData: [
           '0x00000000000000000000000000000000',
-          '0x00e40b54020000000000000000000000010000000000000000000000000000000009000000000000000000',
-          '0x00000000000000000000000000000000010000000000000000000000000000000009000000000000000001',
+          '0x00e40b54020000000000000000000000018096980000000000000000000000000009000000000000000000',
+          '0x00008a5d7845630100000000000000000100e40b5402000000000000000000000009000000000000000001',
+        ],
+      })
+    })
+
+    it('should claim orders', () => {
+      const matcher = new Matcher([], [], dealMakerCell, [])
+      matcher.dealMakerCell = dealMakerCell
+      const ownerLock = {
+        codeHash: BASE_SCRIPTS.lock.code_hash,
+        hashType: BASE_SCRIPTS.lock.hash_type,
+        args: BASE_SCRIPTS.lock.args,
+      }
+      const ORDER_SCRIPTS = {
+        lock: {
+          codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+          hashType: 'data' as CKBComponents.ScriptHashType,
+          args: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+        },
+        type: {
+          codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+          hashType: 'type' as CKBComponents.ScriptHashType,
+          args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+        },
+      }
+      const orders = {
+        bidOrderWithEmptyOrderAmount: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('0'),
+            price: PRICE.NINE,
+            capacity: BigInt('1000000000000000000000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        bidOrderWithLowBalance: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x1',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('10000000'),
+            price: PRICE.NINE,
+            capacity: BigInt('15400000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        bidOrderWithLowBalanceAndPositivePriceExponent: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x1',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('1'),
+            orderAmount: BigInt('10000000'),
+            price: {
+              effect: BigInt(1),
+              exponent: BigInt(10),
+            },
+            capacity: BigInt('15400000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        askOrderWithEmptyOrderAmount: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('100000000000000000'),
+            orderAmount: BigInt('0'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        askOrderWithLowBalance: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x3',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('0'),
+            orderAmount: BigInt('10000000000'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+      }
+      matcher.matchedOrderList = [
+        orders.bidOrderWithEmptyOrderAmount,
+        orders.bidOrderWithLowBalance,
+        orders.bidOrderWithLowBalanceAndPositivePriceExponent,
+        orders.askOrderWithEmptyOrderAmount,
+        orders.askOrderWithLowBalance,
+      ]
+      matcher.dealMakerCapacityAmount = BigInt(100000000)
+      expect(matcher.rawTx).toEqual({
+        version: '0x0',
+        headerDeps: [],
+        cellDeps: MATCH_ORDERS_CELL_DEPS,
+        inputs: [
+          { previousOutput: { txHash: '0x0', index: '0x0' }, since: '0x0' },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x0',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x1',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x2',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x3',
+            },
+            since: '0x0',
+          },
+        ],
+        witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x', '0x', '0x', '0x'],
+        outputs: [
+          {
+            capacity: '0x5e0da30',
+            lock: { codeHash: '0x', hashType: 'data', args: '0x' },
+            type: { codeHash: '0x', hashType: 'data', args: '0x' },
+          },
+          {
+            capacity: '0xd3c21bcecceda1000000',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x395e95a00',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x395e95a00',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x14f46b0400',
+            lock: ownerLock,
+            type: null,
+          },
+          {
+            capacity: '0x14f46b0400',
+            lock: ownerLock,
+            type: null,
+          },
+        ],
+        outputsData: [
+          '0x00000000000000000000000000000000',
+          '0x00e40b54020000000000000000000000',
+          '0x00e40b54020000000000000000000000',
+          '0x01000000000000000000000000000000',
+          '0x',
+          '0x',
         ],
       })
     })
