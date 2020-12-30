@@ -137,7 +137,7 @@ describe('Test tasks module', () => {
       expect(subscribeOrderCell).toBeCalledTimes(1)
     })
 
-    it('should start a cron job', () => {
+    it('should start 3 cron jobs', () => {
       expect(mockCronConstructor).toBeCalledTimes(3)
     })
   })
@@ -161,6 +161,20 @@ describe('Test tasks module', () => {
 
     it('should call scanOrderCells', () => {
       expect(mockScanOrderCells).toBeCalledTimes(1)
+    })
+  })
+
+  describe('Test tasksService#scanPlaceOrderLocks', () => {
+    beforeEach(async () => {
+      await tasksService.scanPlaceOrderLocks()
+    })
+
+    it('should call scanPlaceOrderLocks', () => {
+      expect(mockScanPlaceOrderLocks).toBeCalledTimes(1)
+    })
+
+    describe.skip('tasksService#isScanningPlaceOrder is true', () => {
+      it('should skip this task', () => {})
     })
   })
 

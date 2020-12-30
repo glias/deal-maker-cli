@@ -49,6 +49,7 @@ export const BASE_BID_ORDER: OrderDto = {
   price: PRICE.NINE,
   blockNumber: 55,
   output: JSON.stringify({ ...BASE_SCRIPTS, capacity: ``, data: `` }),
+  ownerLockHash: '',
 }
 
 export const BASE_ASK_ORDER: OrderDto = {
@@ -58,6 +59,7 @@ export const BASE_ASK_ORDER: OrderDto = {
   price: PRICE.NINE,
   blockNumber: 55,
   output: JSON.stringify({ ...BASE_SCRIPTS, capacity: '', data: '' }),
+  ownerLockHash: '',
 }
 
 // REFACTOR
