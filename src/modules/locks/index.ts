@@ -26,10 +26,6 @@ class LockService {
     return this.#lockRepository.find({ lockHash: In(lockHashList) })
   }
 
-  findByLockHash = (lockHash: string) => {
-    return this.#lockRepository.findOne(lockHash)
-  }
-
   addLock = async (lock: LockDto) => {
     const found = await this.#lockRepository.findOne(lock)
     if (found) {
