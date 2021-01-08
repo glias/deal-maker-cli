@@ -184,7 +184,7 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
   const [bidPrice, askPrice] = [bidOrderInfo.price, askOrderInfo.price].map(price => {
     const exponent = Number(price.exponent)
     const p = price.effect * PRICE_RATIO
-    return exponent >= 0 ? p * BigInt(10 ** exponent) : p / BigInt(10 ** (-1 * exponent))
+    return exponent >= 0 ? p * BigInt(10) ** BigInt(exponent) : p / BigInt(10) ** BigInt(-1 * exponent)
   })
   const price = (bidPrice + askPrice) / BigInt(2)
 
@@ -235,5 +235,6 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
 
 export const getPrice = (price: Record<'effect' | 'exponent', bigint>) => {
   const effect = new BigNumber(price.effect.toString())
-  return effect.multipliedBy(new BigNumber(10).exponentiatedBy(Number(price.exponent)))
+  const exponent = new BigNumber(10).exponentiatedBy(Math.abs(Number(price.exponent)))
+  return price.exponent >= BigInt(0) ? effect.multipliedBy(exponent) : effect.dividedBy(exponent)
 }

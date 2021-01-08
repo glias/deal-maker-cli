@@ -415,4 +415,26 @@ describe('Test parser', () => {
       ).toBeTruthy()
     })
   })
+
+  describe('get price', () => {
+    it('extreme positive exponent', () => {
+      const fixture = {
+        effect: BigInt(5000000000000000000),
+        exponent: BigInt(27),
+      }
+
+      const price = getPrice(fixture)
+      expect(price.toFormat({ separator: '' })).toBe('5000000000000000000000000000000000000000000000')
+    })
+
+    it('extreme negative exponent', () => {
+      const fixture = {
+        effect: BigInt(5000000000000000000),
+        exponent: BigInt(-27),
+      }
+
+      const price = getPrice(fixture)
+      expect(price.toFormat()).toBe('0.000000005')
+    })
+  })
 })
