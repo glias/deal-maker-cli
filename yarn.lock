@@ -541,23 +541,23 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@nervosnetwork/ckb-sdk-core@0.38.2":
-  version "0.38.2"
-  resolved "https://registry.npmjs.org/@nervosnetwork/ckb-sdk-core/-/ckb-sdk-core-0.38.2.tgz#26f3dc8e29d5843662d5339536da6cb927b4c351"
-  integrity sha512-rmyfAs5nhFuZeuAyu47gZPe5ZAzBt9GJdW9gmp0GTU7ed35H17uK1EjGgpzEkbz9yozVs36SCh3Lpa80csnggQ==
+"@nervosnetwork/ckb-sdk-core@0.39.0":
+  version "0.39.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-core/-/ckb-sdk-core-0.39.0.tgz#5348e6ec4b5fbf6758d55e7f47db00841bea0c8a"
+  integrity sha512-70cWW9AIRkUqvYopsfMlGZ1sKtR74yWo3VQLp7lg/Up89z4agdJ6iIFdZClSXixEcnhH5IuY3wFxVpQKJPelHA==
   dependencies:
-    "@nervosnetwork/ckb-sdk-rpc" "0.38.2"
-    "@nervosnetwork/ckb-sdk-utils" "0.38.2"
-    "@nervosnetwork/ckb-types" "0.38.2"
+    "@nervosnetwork/ckb-sdk-rpc" "0.39.0"
+    "@nervosnetwork/ckb-sdk-utils" "0.39.0"
+    "@nervosnetwork/ckb-types" "0.39.0"
     tslib "2.0.1"
 
-"@nervosnetwork/ckb-sdk-rpc@0.38.2":
-  version "0.38.2"
-  resolved "https://registry.npmjs.org/@nervosnetwork/ckb-sdk-rpc/-/ckb-sdk-rpc-0.38.2.tgz#03f84d569aa781b41c51a311d068d0e937d01e5c"
-  integrity sha512-66ws2HpUVfnTwrqM5uK4Tw0aqpvaAohA0noPdLQjJHMqnOfftyBJYyawEbkci0BvJfafB4vvx42HRmnyM4W4sw==
+"@nervosnetwork/ckb-sdk-rpc@0.39.0":
+  version "0.39.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-rpc/-/ckb-sdk-rpc-0.39.0.tgz#e1105faec6dd8eb6330fbc05e77576bcc8f19287"
+  integrity sha512-v3wFnhQT4iKuFRVr0e0zhHjS5XorxoKFdYRcj8A4jg/wvE++berXEaeJXIx1ORJNF4hx26hnvqblNjQntbVbSw==
   dependencies:
-    "@nervosnetwork/ckb-sdk-utils" "0.38.2"
-    axios "0.19.2"
+    "@nervosnetwork/ckb-sdk-utils" "0.39.0"
+    axios "0.21.1"
     tslib "2.0.1"
 
 "@nervosnetwork/ckb-sdk-utils@0.38.2":
@@ -570,10 +570,25 @@
     jsbi "3.1.3"
     tslib "2.0.1"
 
+"@nervosnetwork/ckb-sdk-utils@0.39.0":
+  version "0.39.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-utils/-/ckb-sdk-utils-0.39.0.tgz#538c7cdac236c6e516a32e4ca5e02220c5b9ad3b"
+  integrity sha512-/UoRMSOjjVoh/YQQsrwg4Iyncan0KYZJSfcLqDj9c0jOdjfyvJyAXqIyKzCvc+MOHIUFxGLDCI88hpeggc6L4A==
+  dependencies:
+    "@nervosnetwork/ckb-types" "0.39.0"
+    elliptic "6.5.3"
+    jsbi "3.1.3"
+    tslib "2.0.1"
+
 "@nervosnetwork/ckb-types@0.38.2":
   version "0.38.2"
   resolved "https://registry.npmjs.org/@nervosnetwork/ckb-types/-/ckb-types-0.38.2.tgz#2e584c0f3f3ba53d30abe1a0a80493091d92c547"
   integrity sha512-d5oQug8qZGJ188JE5e7baYLER45vVuTkzgEU07dmUxbib3+nDdme1ZK1659329mSDO9u1yRPuhRhu8YXREWOtA==
+
+"@nervosnetwork/ckb-types@0.39.0":
+  version "0.39.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-types/-/ckb-types-0.39.0.tgz#fa22631b6d964bfdba983e2dfda0f6d27f300d70"
+  integrity sha512-YGh8jW2FgUM54KwjeFbISx+VvtVDu7N9BFPtkbPk8TnIxpGQUksxkfOA/M/SgjbhNLk+mGDE8Gwfy8yjkrRZMg==
 
 "@sindresorhus/is@^0.14.0":
   version "0.14.0"
@@ -1014,12 +1029,12 @@ aws4@^1.8.0:
   resolved "https://registry.npmjs.org/aws4/-/aws4-1.10.1.tgz#e1e82e4f3e999e2cfd61b161280d16a111f86428"
   integrity sha512-zg7Hz2k5lI8kb7U32998pRRFin7zJlkfezGJjUc2heaD4Pw2wObakCDVzkKztTm/Ln7eiVvYsjqak0Ed4LkMDA==
 
-axios@0.19.2:
-  version "0.19.2"
-  resolved "https://registry.npmjs.org/axios/-/axios-0.19.2.tgz#3ea36c5d8818d0d5f8a8a97a6d36b86cdc00cb27"
-  integrity sha512-fjgm5MvRHLhx+osE2xoekY70AhARk3a6hkN+3Io1jc00jtquGvxYlKlsFUhmUET0V5te6CcZI7lcv2Ym61mjHA==
+axios@0.21.1:
+  version "0.21.1"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.21.1.tgz#22563481962f4d6bde9a76d516ef0e5d3c09b2b8"
+  integrity sha512-dKQiRHxGD9PPRIUNIWvZhPTPpl1rf/OxTYKsqKUDjBwYylTvV7SjSHJb9ratfyzM6wCdLCOYLzs73qpg5c4iGA==
   dependencies:
-    follow-redirects "1.5.10"
+    follow-redirects "^1.10.0"
 
 babel-jest@^26.6.3:
   version "26.6.3"
@@ -1791,13 +1806,6 @@ data-urls@^2.0.0:
     whatwg-mimetype "^2.3.0"
     whatwg-url "^8.0.0"
 
-debug@=3.1.0, debug@~3.1.0:
-  version "3.1.0"
-  resolved "https://registry.npmjs.org/debug/-/debug-3.1.0.tgz#5bb5a0672628b64149566ba16819e61518c67261"
-  integrity sha512-OX8XqP7/1a9cqkxYw2yXss15f26NKWBpDXQd0/uK/KPqdQhxbPa994hnzjcE2VqQpDslf55723cKPUOGSmMY3g==
-  dependencies:
-    ms "2.0.0"
-
 debug@^2.2.0, debug@^2.3.3:
   version "2.6.9"
   resolved "https://registry.npmjs.org/debug/-/debug-2.6.9.tgz#5d128515df134ff327e90a4c93f4e077a536341f"
@@ -1818,6 +1826,13 @@ debug@^4.1.0, debug@^4.1.1, debug@^4.2.0:
   integrity sha512-IX2ncY78vDTjZMFUdmsvIRFY2Cf4FnD0wRs+nQwJU8Lu99/tPFdb0VybiiMTPe3I6rQmwsqQqRBvxU+bZ/I8sg==
   dependencies:
     ms "2.1.2"
+
+debug@~3.1.0:
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/debug/-/debug-3.1.0.tgz#5bb5a0672628b64149566ba16819e61518c67261"
+  integrity sha512-OX8XqP7/1a9cqkxYw2yXss15f26NKWBpDXQd0/uK/KPqdQhxbPa994hnzjcE2VqQpDslf55723cKPUOGSmMY3g==
+  dependencies:
+    ms "2.0.0"
 
 debug@~4.1.0:
   version "4.1.1"
@@ -2349,12 +2364,10 @@ fn.name@1.x.x:
   resolved "https://registry.npmjs.org/fn.name/-/fn.name-1.1.0.tgz#26cad8017967aea8731bc42961d04a3d5988accc"
   integrity sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==
 
-follow-redirects@1.5.10:
-  version "1.5.10"
-  resolved "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.5.10.tgz#7b7a9f9aea2fdff36786a94ff643ed07f4ff5e2a"
-  integrity sha512-0V5l4Cizzvqt5D44aTXbFZz+FtyXV1vrDN6qrelxtfYQKW0KO0W2T/hkE8xvGa/540LkZlkaUjO4ailYTFtHVQ==
-  dependencies:
-    debug "=3.1.0"
+follow-redirects@^1.10.0:
+  version "1.13.1"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.13.1.tgz#5f69b813376cee4fd0474a3aba835df04ab763b7"
+  integrity sha512-SSG5xmZh1mkPGyKzjZP8zLjltIfpW32Y5QpdNJyjcfGxK3qo3NDDkZOZSFiGn1A6SclQxY9GzEwAHQ3dmYRWpg==
 
 for-in@^1.0.2:
   version "1.0.2"
