@@ -186,11 +186,10 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     const p = price.effect * PRICE_RATIO
     return exponent >= 0 ? p * BigInt(10) ** BigInt(exponent) : p / BigInt(10) ** BigInt(-1 * exponent)
   })
-  const price = (bidPrice + askPrice) / BigInt(2)
 
   const { sudt: bidOrderAmount, ckb: bidCostAmount } = findBestDeal(
-    (bidOrderInfo.orderAmount * price) / PRICE_RATIO,
-    price,
+    (bidOrderInfo.orderAmount * bidPrice) / PRICE_RATIO,
+    bidPrice,
   )
 
   const bidAmount = {
@@ -200,7 +199,7 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: bidOrderInfo.sudtAmount + bidOrderAmount, // target amount in sudt
   }
 
-  const { sudt: askCostAmount, ckb: askOrderAmount } = findBestDeal(askOrderInfo.orderAmount, price)
+  const { sudt: askCostAmount, ckb: askOrderAmount } = findBestDeal(askOrderInfo.orderAmount, askPrice)
 
   const askAmount = {
     costAmount: askCostAmount, // cost sudt
@@ -209,27 +208,9 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: askOrderInfo.capacity + askOrderAmount, // target capacity
   }
 
-  if (
-    askCostAmount &&
-    ((askOrderAmount * PRICE_RATIO) / askCostAmount < askPrice ||
-      (askOrderAmount * PRICE_RATIO) / askCostAmount > bidPrice)
-  ) {
-    askAmount.orderAmount = BigInt(0)
-    askAmount.costAmount = BigInt(0)
-  } else if (
-    bidOrderAmount &&
-    ((bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidPrice ||
-      (bidCostAmount * PRICE_RATIO) / bidOrderAmount < askPrice)
-  ) {
-    bidAmount.orderAmount = BigInt(0)
-    bidAmount.costAmount = BigInt(0)
-  }
   return {
     askAmount,
     bidAmount,
-    price: new BigNumber(price.toString())
-      .div(PRICE_RATIO.toString())
-      .toFormat({ groupSeparator: '', decimalSeparator: '.' }),
   }
 }
 

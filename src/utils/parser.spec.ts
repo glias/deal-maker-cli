@@ -191,7 +191,7 @@ describe('Test parser', () => {
           type: 0,
         },
       }
-      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
       expect(askAmount).toEqual({
         balance: BigInt(1_501_460_607),
         costAmount: BigInt(648_484_848),
@@ -214,7 +214,6 @@ describe('Test parser', () => {
           .div(bidAmount.orderAmount.toString())
           .isEqualTo(getPrice(fixture.bidOrderInfo.price)),
       ).toBeTruthy()
-      expect(price).toBe('5')
     })
 
     it('perfect price for order amount', () => {
@@ -234,7 +233,7 @@ describe('Test parser', () => {
           type: 0,
         },
       }
-      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
       expect(askAmount).toEqual({
         balance: BigInt(1_501_460_607),
         costAmount: BigInt(648_484_848),
@@ -257,7 +256,6 @@ describe('Test parser', () => {
           .div(bidAmount.orderAmount.toString())
           .isEqualTo(getPrice(fixture.bidOrderInfo.price)),
       ).toBeTruthy()
-      expect(price).toBe('5')
     })
 
     it('decimal price', () => {
@@ -283,7 +281,7 @@ describe('Test parser', () => {
           type: 0,
         },
       }
-      const { askAmount, bidAmount, price } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
+      const { askAmount, bidAmount } = formatDealInfo(fixture.bidOrderInfo, fixture.askOrderInfo)
       expect(askAmount).toEqual({
         balance: BigInt(1_501_460_607),
         costAmount: BigInt(648_484_848_0_000_000_000),
@@ -306,7 +304,6 @@ describe('Test parser', () => {
           .div(bidAmount.orderAmount.toString())
           .isEqualTo(getPrice(fixture.bidOrderInfo.price)),
       ).toBeTruthy()
-      expect(price).toBe('0.0000000005')
     })
 
     it('edge case 1', () => {

@@ -1,4 +1,5 @@
 import { getTransactionSize } from '@nervosnetwork/ckb-sdk-utils'
+import BigNumber from 'bignumber.js'
 import { OrderDto } from '../orders/order.dto'
 import { OrderType } from '../orders/order.entity'
 import {
@@ -6,6 +7,7 @@ import {
   formatDealInfo,
   encodeOrderData,
   readBigUInt128LE,
+  getPrice,
   FEE,
   FEE_RATIO,
   MATCH_ORDERS_CELL_DEPS,
@@ -128,7 +130,7 @@ export default class {
     while (
       this.askOrderList.length &&
       this.bidOrderList.length &&
-      this.askOrderList[0].price <= this.bidOrderList[0].price
+      getPrice(this.askOrderList[0].price).isLessThanOrEqualTo(getPrice(this.bidOrderList[0].price))
     ) {
       const bidOrder = this.bidOrderList[0]
       const askOrder = this.askOrderList[0]
@@ -151,7 +153,7 @@ export default class {
         continue
       }
 
-      if (bidAmount.orderAmount === askAmount.costAmount) {
+      if (bidAmount.orderAmount <= askAmount.costAmount) {
         if (!this.#isBidBalanceEnough(bidAmount.balance, bidAmount.costAmount)) {
           if (bidOrder.part) {
             break
@@ -160,25 +162,19 @@ export default class {
           continue
         }
 
-        if (!this.#isAskBalanceEnough(askAmount.balance, askAmount.costAmount)) {
-          if (askOrder.part) {
-            break
+        if (bidAmount.costAmount >= askAmount.orderAmount) {
+          if (!this.#isAskBalanceEnough(askAmount.balance, askAmount.costAmount)) {
+            if (askOrder.part) {
+              break
+            }
+            this.askOrderList.shift()
+            continue
           }
-          this.askOrderList.shift()
-          continue
-        }
 
-        this.handleFullMatchedOrder(bidOrder, bidAmount)
-        this.handleFullMatchedOrder(askOrder, askAmount)
-        continue
-      }
+          const dealtAmount = { capacity: askAmount.orderAmount, sudt: askAmount.costAmount }
 
-      if (bidAmount.orderAmount < askAmount.costAmount) {
-        if (!this.#isBidBalanceEnough(bidAmount.balance, bidAmount.costAmount)) {
-          if (bidOrder.part) {
-            break
-          }
-          this.bidOrderList.shift()
+          this.handleFullMatchedOrder(bidOrder, dealtAmount)
+          this.handleFullMatchedOrder(askOrder, dealtAmount)
           continue
         }
 
@@ -190,12 +186,11 @@ export default class {
           continue
         }
 
-        this.handleFullMatchedOrder(bidOrder, bidAmount)
-        this.handlePartialMatchedAskOrder(askOrder, { capacity: bidAmount.costAmount, sudt: bidAmount.orderAmount })
+        const dealtAmount = { capacity: bidAmount.costAmount, sudt: bidAmount.orderAmount }
+        this.handleFullMatchedOrder(bidOrder, dealtAmount)
+        this.handleMatchedAskOrder(askOrder, dealtAmount)
         continue
-      }
-
-      if (bidAmount.orderAmount > askAmount.costAmount) {
+      } else if (bidAmount.costAmount >= askAmount.orderAmount) {
         if (!this.#isAskBalanceEnough(askAmount.balance, askAmount.costAmount)) {
           if (askOrder.part) {
             break
@@ -212,9 +207,16 @@ export default class {
           continue
         }
 
-        this.handleFullMatchedOrder(askOrder, askAmount)
-        this.handlePartialMatchedBidOrder(bidOrder, { capacity: askAmount.orderAmount, sudt: askAmount.costAmount })
+        const dealtAmount = { capacity: askAmount.orderAmount, sudt: askAmount.costAmount }
+        this.handleFullMatchedOrder(askOrder, dealtAmount)
+        this.handleMatchedBidOrder(bidOrder, dealtAmount)
         continue
+      }
+
+      if (this.bidOrderList.length > this.askOrderList.length) {
+        this.askOrderList.shift()
+      } else {
+        this.bidOrderList.shift()
       }
     }
 
@@ -225,62 +227,85 @@ export default class {
     return this.matchedOrderList
   }
 
-  handlePartialMatchedAskOrder = (askOrder: Order, dealtAmount: Record<'capacity' | 'sudt', bigint>) => {
-    const fee = (dealtAmount.sudt * FEE) / (FEE_RATIO - FEE)
-    const orderAmount = askOrder.info.orderAmount - dealtAmount.capacity
-    const sudtAmount = askOrder.info.sudtAmount - dealtAmount.sudt - fee
-    const capacity = askOrder.info.capacity + dealtAmount.capacity
+  handleMatchedAskOrder = (askOrder: Order, bidAmount: Record<'capacity' | 'sudt', bigint>) => {
+    const price = getPrice(askOrder.price)
+
+    const costSudt = BigInt(
+      new BigNumber(
+        `${bidAmount.capacity > askOrder.info.orderAmount ? askOrder.info.orderAmount : bidAmount.capacity}`,
+      )
+        .dividedBy(price)
+        .integerValue(BigNumber.ROUND_DOWN)
+        .toFormat({ groupSeparator: '' }),
+    )
+
+    const boughtCapacity = BigInt(
+      new BigNumber(`${costSudt}`)
+        .multipliedBy(price)
+        .integerValue(BigNumber.ROUND_CEIL)
+        .toFormat({ groupSeparator: '' }),
+    )
+    const costSudtOverflow = costSudt - bidAmount.sudt
+
+    const rawFee = (bidAmount.sudt * FEE) / (FEE_RATIO - FEE)
+    let fee = costSudtOverflow > rawFee ? costSudtOverflow : rawFee
+
+    const orderAmount = askOrder.info.orderAmount - boughtCapacity
+
+    let sudtAmount = askOrder.info.sudtAmount - bidAmount.sudt - fee
+    if (sudtAmount < BigInt(0)) {
+      fee += sudtAmount
+      sudtAmount = BigInt(0)
+    }
+
+    const capacity = askOrder.info.capacity + boughtCapacity
     const info = { capacity, sudtAmount, orderAmount, price: askOrder.price, type: OrderType.Ask }
-    this.askOrderList[0] = { ...askOrder, info, part: true }
     this.dealMakerSudtAmount += fee
+    this.dealMakerCapacityAmount += bidAmount.capacity - boughtCapacity
+    this.askOrderList[0] = { ...askOrder, info, part: true }
   }
 
-  handlePartialMatchedBidOrder = (bidOrder: Order, dealtAmount: Record<'capacity' | 'sudt', bigint>) => {
-    const fee = (dealtAmount.capacity * FEE) / (FEE_RATIO - FEE)
-    const capacity = bidOrder.info.capacity - dealtAmount.capacity - fee
-    const orderAmount = bidOrder.info.orderAmount - dealtAmount.sudt
-    const sudtAmount = bidOrder.info.sudtAmount + dealtAmount.sudt
+  handleMatchedBidOrder = (bidOrder: Order, askAmount: Record<'capacity' | 'sudt', bigint>) => {
+    const price = getPrice(bidOrder.price)
+
+    const boughtSudt = askAmount.sudt > bidOrder.info.orderAmount ? bidOrder.info.orderAmount : askAmount.sudt
+    const costCapacity = BigInt(
+      new BigNumber(`${boughtSudt}`)
+        .multipliedBy(price)
+        .integerValue(BigNumber.ROUND_DOWN)
+        .toFormat({ groupSeparator: '' }),
+    )
+
+    const costCapacityOverflow = costCapacity - askAmount.capacity
+
+    const rawFee = (askAmount.capacity * FEE) / (FEE_RATIO - FEE)
+    let fee = costCapacityOverflow > rawFee ? costCapacityOverflow : rawFee
+
+    let capacity = bidOrder.info.capacity - askAmount.capacity - fee
+    const cellSize = BigInt(ORDER_CELL_SIZE) * BigInt(SHANNONS_RATIO)
+
+    if (capacity < cellSize) {
+      fee -= cellSize - capacity
+      capacity = cellSize
+    }
+
+    const orderAmount = bidOrder.info.orderAmount - boughtSudt
+    const sudtAmount = bidOrder.info.sudtAmount + boughtSudt
     const info = { capacity, sudtAmount, orderAmount, price: bidOrder.price, type: OrderType.Bid }
-    this.bidOrderList[0] = { ...bidOrder, info, part: true }
     this.dealMakerCapacityAmount += fee
+    this.dealMakerSudtAmount += askAmount.sudt - boughtSudt
+    this.bidOrderList[0] = { ...bidOrder, info, part: true }
   }
 
-  handleFullMatchedOrder = (
-    order: Order,
-    { costAmount, balance, targetAmount }: Record<'costAmount' | 'balance' | 'targetAmount', bigint>,
-  ) => {
-    const fee = (costAmount * FEE) / (FEE_RATIO - FEE)
-    const remain = balance - costAmount - fee
+  handleFullMatchedOrder = (order: Order, counterpart: Record<'capacity' | 'sudt', bigint>) => {
     if (order.info.type === OrderType.Bid) {
-      this.dealMakerCapacityAmount += fee
-      this.matchedOrderList.push({
-        id: order.id,
-        scripts: order.scripts,
-        info: {
-          sudtAmount: targetAmount,
-          orderAmount: order.info.orderAmount + order.info.sudtAmount - targetAmount,
-          price: order.price,
-          capacity: remain,
-          type: OrderType.Bid,
-        },
-        ownerLock: order.ownerLock,
-      })
-      this.bidOrderList.shift()
+      this.handleMatchedBidOrder(order, counterpart)
+      const matched = this.bidOrderList.shift()
+      this.matchedOrderList.push(matched!)
     } else {
-      this.dealMakerSudtAmount += fee
-      this.matchedOrderList.push({
-        id: order.id,
-        scripts: order.scripts,
-        info: {
-          sudtAmount: remain,
-          orderAmount: order.info.orderAmount + order.info.capacity - targetAmount,
-          price: order.price,
-          capacity: targetAmount,
-          type: OrderType.Ask,
-        },
-        ownerLock: order.ownerLock,
-      })
-      this.askOrderList.shift()
+      this.handleMatchedAskOrder(order, counterpart)
+      const matched = this.askOrderList.shift()
+      this.matchedOrderList.push(matched!)
     }
   }
 

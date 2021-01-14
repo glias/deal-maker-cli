@@ -564,18 +564,18 @@ describe('Test Match', () => {
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
             81_00000000,
-            71_99999987,
-            46_53961900,
+            72_00000000,
+            37_75626881,
           ])
           expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([
             90_97291876,
-            991_50392356,
-            17_47058822,
+            99_097291876,
+            18_00000000,
           ])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 13, 12_52941178])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 12_00000000])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(5256946)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(46038113)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(5416248)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(924373119)
         })
       })
 
@@ -616,19 +616,83 @@ describe('Test Match', () => {
 
           expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
             81_00000000,
-            67_60280843,
-            51_00000000,
+            64_59378135,
+            54_00000000,
           ])
           expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([
             9097291876,
             1500000000,
-            99398194584,
+            99325000000,
           ])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 2100000000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 1800000000])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(4513540)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(39719157)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(77708124)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(40621865)
         })
+      })
+    })
+
+    describe('Over paid', () => {
+      it('ASK order over paid', () => {
+        expect.assertions(5)
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.TEN,
+          capacity: BigInt(100_00000000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(1 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.FIVE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(10_20000000),
+          orderAmount: BigInt(10 * 10 ** 8),
+        })
+        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
+        matcher.match()
+
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          8996990973,
+          1000000000,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([100000000, 819398195])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(100601805)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(3009027)
+      })
+
+      it('Bid order over paid', () => {
+        expect.assertions(5)
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373120),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.EIGHT,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(10_20000000),
+          orderAmount: BigInt(72 * 10 ** 8),
+        })
+        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
+        matcher.match()
+
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          24373120,
+          7200000000,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([900000000, 117291876])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(900000000)
       })
     })
 
