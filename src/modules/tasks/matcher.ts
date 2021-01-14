@@ -53,8 +53,9 @@ export default class {
     this.matchedOrderList.forEach(o => {
       if (this.#isOrderClaimable(o.info)) {
         const { lockHash: _, ...lock } = o.ownerLock!
-        const type = o.info.type === OrderType.Bid ? o.scripts.type : null
-        const data = o.info.type === OrderType.Bid ? `0x${bigIntToUint128Le(o.info.sudtAmount)}` : '0x'
+        const type = o.info.type === OrderType.Bid || o.info.sudtAmount ? o.scripts.type : null
+        const data =
+          o.info.type === OrderType.Bid || o.info.sudtAmount ? `0x${bigIntToUint128Le(o.info.sudtAmount)}` : '0x'
 
         outputs.push({ capacity: `0x${o.info.capacity.toString(16)}`, type, lock })
         outputsData.push(data)

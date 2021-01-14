@@ -981,7 +981,7 @@ describe('Test Match', () => {
           id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
           scripts: ORDER_SCRIPTS,
           info: {
-            sudtAmount: BigInt('100000000000000000'),
+            sudtAmount: BigInt('0'),
             orderAmount: BigInt('0'),
             price: PRICE.NINE,
             capacity: BigInt('90000000000'),
@@ -1001,6 +1001,18 @@ describe('Test Match', () => {
           },
           ownerLock: getMockLock({ ownerLockHash: '' }),
         },
+        askOrderWithSudtBalance: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x4',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('100000000000000000'),
+            orderAmount: BigInt('0'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
       }
       matcher.matchedOrderList = [
         orders.bidOrderWithEmptyOrderAmount,
@@ -1008,6 +1020,7 @@ describe('Test Match', () => {
         orders.bidOrderWithLowBalanceAndPositivePriceExponent,
         orders.askOrderWithEmptyOrderAmount,
         orders.askOrderWithLowBalance,
+        orders.askOrderWithSudtBalance,
       ]
       matcher.dealMakerCapacityAmount = BigInt(100000000)
       expect(matcher.rawTx).toEqual({
@@ -1044,11 +1057,18 @@ describe('Test Match', () => {
             },
             since: '0x0',
           },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x4',
+            },
+            since: '0x0',
+          },
         ],
-        witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x', '0x', '0x', '0x'],
+        witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x', '0x', '0x', '0x', '0x'],
         outputs: [
           {
-            capacity: '0x5e0da30',
+            capacity: '0x5dcdac0',
             lock: { codeHash: '0x', hashType: 'data', args: '0x' },
             type: { codeHash: '0x', hashType: 'data', args: '0x' },
           },
@@ -1089,6 +1109,19 @@ describe('Test Match', () => {
             lock: ownerLock,
             type: null,
           },
+          {
+            capacity: '0x14f46b0400',
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
         ],
         outputsData: [
           '0x00000000000000000000000000000000',
@@ -1097,6 +1130,7 @@ describe('Test Match', () => {
           '0x01000000000000000000000000000000',
           '0x',
           '0x',
+          '0x00008a5d784563010000000000000000',
         ],
       })
     })
