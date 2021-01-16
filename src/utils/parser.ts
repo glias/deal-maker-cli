@@ -167,7 +167,7 @@ const gcd = (a: bigint, b: bigint): bigint => {
   return gcd(b, a % b)
 }
 
-const findBestDeal = (ckbAmount: bigint, price: bigint) => {
+export const findBestDeal = (ckbAmount: bigint, price: bigint) => {
   const s = gcd(price, PRICE_RATIO)
   const p0 = price / s
   const n0 = PRICE_RATIO / s

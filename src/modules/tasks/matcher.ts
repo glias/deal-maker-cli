@@ -8,6 +8,7 @@ import {
   encodeOrderData,
   readBigUInt128LE,
   getPrice,
+  findBestDeal,
   FEE,
   FEE_RATIO,
   MATCH_ORDERS_CELL_DEPS,
@@ -15,6 +16,7 @@ import {
   ORDER_CELL_SIZE,
   SHANNONS_RATIO,
   SUDT_CELL_SIZE,
+  PRICE_RATIO,
 } from '../../utils'
 import { Lock } from '../locks/lock.entity'
 
@@ -334,6 +336,10 @@ export default class {
   }
 
   #isOrderClaimable = ({ orderAmount, type, capacity, sudtAmount, price }: OrderInfo) => {
+    if (this.#isOrderClaimableInDemo({ orderAmount, type, capacity, sudtAmount, price })) {
+      return true
+    }
+
     if (orderAmount === BigInt(0)) {
       return true
     }
@@ -353,5 +359,19 @@ export default class {
       return false
     }
     return true
+  }
+
+  /**
+   * Claim condition used in demo
+   */
+  #isOrderClaimableInDemo = (info: OrderInfo) => {
+    const exponent = Number(info.price.exponent)
+    const p = info.price.effect * PRICE_RATIO
+
+    const price = exponent >= 0 ? p * BigInt(10) ** BigInt(exponent) : p / BigInt(10) ** BigInt(-1 * exponent)
+
+    const ckbAmount = info.type === OrderType.Bid ? (info.orderAmount * price) / PRICE_RATIO : info.orderAmount
+    const { sudt } = findBestDeal(ckbAmount, price)
+    return !sudt
   }
 }
