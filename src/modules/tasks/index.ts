@@ -146,8 +146,11 @@ class TasksService {
           this.#ordersService.getPendingDeals(),
         ])
 
-        const ownerLockList = await this.#locksService.findByLockHashList(
-          [...bidOrderList, ...askOrderList].map(o => o.ownerLockHash),
+        const orderLockHashList = [...bidOrderList, ...askOrderList].map(o => o.ownerLockHash)
+        const ownerLockList = await this.#locksService.findByLockHashList(orderLockHashList)
+
+        this.#locksService.fetchLockList(
+          orderLockHashList.filter(lockHash => !ownerLockList.some(lock => lock.lockHash === lockHash)),
         )
 
         if (!askOrderList.length || !bidOrderList.length) {
