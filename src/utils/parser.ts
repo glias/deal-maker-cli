@@ -1,9 +1,9 @@
 import type { Cell } from '@ckb-lumos/base'
+import BigNumber from 'bignumber.js'
 import { OrderType } from '../modules/orders/order.entity'
 import { PRICE_RATIO } from './conts'
 
 /**
- *
  * @param rawHexString hex string without 0x prefix
  */
 export const readBigUInt128LE = (rawHexString: string) => {
@@ -11,18 +11,54 @@ export const readBigUInt128LE = (rawHexString: string) => {
   return buf.reverse().toString('hex')
 }
 
+const parsePrice = (price: string) => {
+  let effect = BigInt(`0x${Buffer.from(price.substr(0, 16), 'hex').reverse().toString('hex')}`)
+  const e = +`0x${price.slice(16)}`
+  const view = new DataView(new ArrayBuffer(1))
+  view.setUint8(0, e)
+  let exponent = BigInt(view.getInt8(0))
+
+  const MAX_EFFECT = BigInt('0xffffffffffffffff')
+  while (effect * BigInt(10) < MAX_EFFECT) {
+    effect = effect * BigInt(10)
+    exponent -= BigInt(1)
+  }
+  return { effect, exponent }
+}
+
+const encodePrice = (price: Record<'effect' | 'exponent', bigint>) => {
+  let { effect, exponent } = price
+  const offset = `${effect}`.match(/0*$/)![0].length
+  effect = effect / BigInt(10 ** offset)
+  exponent += BigInt(offset)
+
+  const view = new DataView(new ArrayBuffer(1))
+  view.setInt8(0, Number(exponent))
+  const e = +view.getUint8(0)
+  return `${Buffer.from(effect.toString(16).padStart(16, '0'), 'hex').reverse().toString('hex')}${e
+    .toString(16)
+    .padStart(2, '0')}`
+}
+
 export const parseOrderData = (
   data: string,
-): Record<'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: '00' | '01' } => {
+): Record<'sudtAmount' | 'orderAmount', bigint> & {
+  type: '00' | '01'
+  version: '01'
+  price: Record<'effect' | 'exponent', bigint>
+} => {
   const sudtAmount = data.slice(2, 34)
-  const orderAmount = data.slice(34, 66)
-  const price = data.slice(66, 98)
-  const type = data.slice(98, 100) as '00' | '01'
+  const version = data.slice(34, 36) as '01'
+  const orderAmount = data.slice(36, 68)
+  const price = data.slice(68, 86)
+  const type = data.slice(86, 88) as '00' | '01'
+
   return {
+    version,
     sudtAmount: BigInt('0x' + readBigUInt128LE(sudtAmount)),
     orderAmount: BigInt('0x' + readBigUInt128LE(orderAmount)),
-    price: BigInt('0x' + readBigUInt128LE(price)),
     type,
+    price: parsePrice(price),
   }
 }
 
@@ -55,8 +91,10 @@ export const bigIntToUint128Le = (u128: bigint) => {
   return `${buf.toString('hex')}`
 }
 
-export const formatOrderData = (currentSudtAmount: bigint, orderAmount: bigint, price: bigint, type: '00' | '01') => {
-  return `0x${bigIntToUint128Le(currentSudtAmount)}${bigIntToUint128Le(orderAmount)}${bigIntToUint128Le(price)}${type}`
+export const encodeOrderData = (data: ReturnType<typeof parseOrderData>) => {
+  return `0x${bigIntToUint128Le(data.sudtAmount)}${data.version}${bigIntToUint128Le(data.orderAmount)}${encodePrice(
+    data.price,
+  )}${data.type}`
 }
 
 type Order = ReturnType<typeof parseOrderData> & { capacity: bigint }
@@ -129,7 +167,7 @@ const gcd = (a: bigint, b: bigint): bigint => {
   return gcd(b, a % b)
 }
 
-const findBestDeal = (ckbAmount: bigint, price: bigint) => {
+export const findBestDeal = (ckbAmount: bigint, price: bigint) => {
   const s = gcd(price, PRICE_RATIO)
   const p0 = price / s
   const n0 = PRICE_RATIO / s
@@ -138,13 +176,20 @@ const findBestDeal = (ckbAmount: bigint, price: bigint) => {
   return { ckb, sudt }
 }
 
-type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount' | 'price', bigint> & { type: OrderType }
+type OrderInfo = Record<'capacity' | 'sudtAmount' | 'orderAmount', bigint> & {
+  type: OrderType
+  price: Record<'effect' | 'exponent', bigint>
+}
 export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo) => {
-  const price = (bidOrderInfo.price + askOrderInfo.price) / BigInt(2)
+  const [bidPrice, askPrice] = [bidOrderInfo.price, askOrderInfo.price].map(price => {
+    const exponent = Number(price.exponent)
+    const p = price.effect * PRICE_RATIO
+    return exponent >= 0 ? p * BigInt(10) ** BigInt(exponent) : p / BigInt(10) ** BigInt(-1 * exponent)
+  })
 
   const { sudt: bidOrderAmount, ckb: bidCostAmount } = findBestDeal(
-    (bidOrderInfo.orderAmount * price) / PRICE_RATIO,
-    price,
+    (bidOrderInfo.orderAmount * bidPrice) / PRICE_RATIO,
+    bidPrice,
   )
 
   const bidAmount = {
@@ -154,7 +199,7 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: bidOrderInfo.sudtAmount + bidOrderAmount, // target amount in sudt
   }
 
-  const { sudt: askCostAmount, ckb: askOrderAmount } = findBestDeal(askOrderInfo.orderAmount, price)
+  const { sudt: askCostAmount, ckb: askOrderAmount } = findBestDeal(askOrderInfo.orderAmount, askPrice)
 
   const askAmount = {
     costAmount: askCostAmount, // cost sudt
@@ -163,20 +208,14 @@ export const formatDealInfo = (bidOrderInfo: OrderInfo, askOrderInfo: OrderInfo)
     targetAmount: askOrderInfo.capacity + askOrderAmount, // target capacity
   }
 
-  if (
-    askCostAmount &&
-    ((askOrderAmount * PRICE_RATIO) / askCostAmount < askOrderInfo.price ||
-      (askOrderAmount * PRICE_RATIO) / askCostAmount > bidOrderInfo.price)
-  ) {
-    askAmount.orderAmount = BigInt(0)
-    askAmount.costAmount = BigInt(0)
-  } else if (
-    bidOrderAmount &&
-    ((bidCostAmount * PRICE_RATIO) / bidOrderAmount > bidOrderInfo.price ||
-      (bidCostAmount * PRICE_RATIO) / bidOrderAmount < askOrderInfo.price)
-  ) {
-    bidAmount.orderAmount = BigInt(0)
-    bidAmount.costAmount = BigInt(0)
+  return {
+    askAmount,
+    bidAmount,
   }
-  return { askAmount, bidAmount, price }
+}
+
+export const getPrice = (price: Record<'effect' | 'exponent', bigint>) => {
+  const effect = new BigNumber(price.effect.toString())
+  const exponent = new BigNumber(10).exponentiatedBy(Math.abs(Number(price.exponent)))
+  return price.exponent >= BigInt(0) ? effect.multipliedBy(exponent) : effect.dividedBy(exponent)
 }

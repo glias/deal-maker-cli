@@ -26,8 +26,6 @@ describe('Test orders service', () => {
   let ordersService: OrdersService
   let orderRepository: OrderRepository
   let dealRepository: DealRepository
-  let rawTx: CKBComponents.RawTransactionToSign
-  const mockIndexer: any = jest.fn()
 
   beforeEach(async () => {
     connection = await createConnection('test')
@@ -51,8 +49,10 @@ describe('Test orders service', () => {
         id: `${cellToSave.out_point.tx_hash}-${cellToSave.out_point.index}`,
         tokenId: cellToSave.cell_output.type.args,
         blockNumber: +cellToSave.block_number,
-        price: BigInt(500000000000000000000).toString(16).padStart(32, '0'),
+        priceEffect: BigInt('5000000000000000000').toString(16),
+        priceExponent: -18,
         type: OrderType.Ask,
+        ownerLockHash: cellToSave.cell_output.lock.args,
         output: JSON.stringify({
           ...cellToSave.cell_output,
           capacity: cellToSave.cell_output.capacity,

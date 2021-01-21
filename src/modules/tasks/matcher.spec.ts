@@ -1,9 +1,43 @@
 import Matcher from './matcher'
 import type { OrderDto } from '../orders/order.dto'
 import { OrderType } from '../orders/order.entity'
-import { formatOrderData, MATCH_ORDERS_CELL_DEPS } from '../../utils'
+import { encodeOrderData, MATCH_ORDERS_CELL_DEPS, ORDER_CELL_SIZE, SHANNONS_RATIO } from '../../utils'
+import { PRICE, BASE_SCRIPTS, BASE_BID_ORDER, BASE_ASK_ORDER } from '../../mock/orders'
 
-// TODO: fix test cases
+const getOrder = (order: {
+  type: 'bid' | 'ask'
+  capacity: bigint
+  price: Record<'effect' | 'exponent', bigint>
+  sudtAmount: bigint
+  orderAmount: bigint
+}): OrderDto => {
+  const base = order.type === 'ask' ? BASE_ASK_ORDER : BASE_BID_ORDER
+  return {
+    ...base,
+    price: order.price,
+    output: JSON.stringify({
+      ...BASE_SCRIPTS,
+      capacity: `0x${(order.capacity + ORDER_CELL_MIN_CAPACITY).toString(16)}`,
+      data: encodeOrderData({
+        sudtAmount: order.sudtAmount,
+        orderAmount: order.orderAmount,
+        price: order.price,
+        type: order.type === 'ask' ? '01' : '00',
+        version: '01',
+      }),
+    }),
+  }
+}
+
+const getMockLock = ({ ownerLockHash }: { ownerLockHash: string }) => ({
+  args: BASE_SCRIPTS.lock.args,
+  hashType: BASE_SCRIPTS.lock.hash_type as CKBComponents.ScriptHashType,
+  codeHash: BASE_SCRIPTS.lock.code_hash,
+  lockHash: ownerLockHash,
+})
+
+const ORDER_CELL_MIN_CAPACITY = BigInt(ORDER_CELL_SIZE) * BigInt(SHANNONS_RATIO)
+
 describe('Test Match', () => {
   const dealMakerCell: RawTransactionParams.Cell = {
     data: '0x',
@@ -11,35 +45,6 @@ describe('Test Match', () => {
     type: { codeHash: '0x', hashType: 'data', args: '0x' },
     capacity: '0x0',
     outPoint: { txHash: '0x0', index: '0x0' },
-  }
-
-  const baseScripts = {
-    lock: {
-      code_hash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
-      hash_type: 'data',
-      args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
-    },
-    type: {
-      code_hash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
-      hash_type: 'type',
-      args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-    },
-  }
-  const baseBidOrder: OrderDto = {
-    id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
-    tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-    type: OrderType.Bid,
-    price: BigInt(900_000_000_000_000_000_000), // 9
-    blockNumber: 55,
-    output: JSON.stringify({ ...baseScripts, capacity: ``, data: `` }),
-  }
-  const baseAskOrder: OrderDto = {
-    id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
-    tokenId: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
-    type: OrderType.Ask,
-    price: BigInt(900_000_000_000_000_000_000), // 9
-    blockNumber: 55,
-    output: JSON.stringify({ ...baseScripts, capacity: '', data: '' }),
   }
 
   afterEach(() => {
@@ -50,195 +55,144 @@ describe('Test Match', () => {
     describe('Full match', () => {
       it('1 Ask 1 Bid', () => {
         expect.assertions(5)
-        const bidOrder = {
-          ...baseBidOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)}`,
-            data: `${formatOrderData(
-              BigInt(0), // sudt 0
-              BigInt(10_000_000_000), // order amount 100
-              BigInt(900_000_000_000_000_000_000), // price amount 9
-              '00',
-            )}`,
-          }),
-        }
-
-        const askOrder = {
-          ...baseAskOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // sudt 100.3
-              BigInt(90_000_000_000), // order amount 900
-              BigInt(900_000_000_000_000_000_000), // 9
-              '01',
-            )}`,
-          }),
-        }
-        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373120),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(9_02708125),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
+        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
         matcher.match()
 
-        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          1,
+          8100000000,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([900000000, 1])
         expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
 
-        expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
-        expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
       })
 
       it('2 Ask 1 Bid', () => {
-        const bidOrder = {
-          ...baseBidOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10 price
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(220_660_000_000).toString(16)}`, // 2206.6 ckb
-            data: `${formatOrderData(
-              BigInt(0), // 0 sudt
-              BigInt(22_000_000_000), // 220 sudt
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '00',
-            )} `,
-          }),
-        }
-
-        const askOrder_1 = {
-          ...baseAskOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10 price
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(12_036_000_000), // 120.36 sudt
-              BigInt(120_000_000_000), // 1200 ckb order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '01',
-            )}`,
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10 price
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // 100.3 sudt
-              BigInt(100_000_000_000), // 1000 ckb order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '01',
-            )}`,
-          }),
-        }
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373120),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
+        const askOrder_1 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(4_51354063),
+          orderAmount: BigInt(40.5 * 10 ** 8),
+        })
+        const askOrder_2 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(4_51354063),
+          orderAmount: BigInt(40.5 * 10 ** 8),
+        })
 
         expect.assertions(5)
-        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        const matcher = new Matcher(
+          [bidOrder],
+          [askOrder_1, askOrder_2],
+          dealMakerCell,
+          [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+        )
         matcher.match()
-        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([
-          120_000_000_000,
-          0,
-          100_000_000_000,
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          40_50000000,
+          2,
+          40_50000000,
         ])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([0, 22_000_000_000, 0])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1, 900000000, 1])
         expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 0])
 
-        expect(Number(matcher.dealMakerSudtAmount)).toBe(66_000_000)
-        expect(Number(matcher.dealMakerCapacityAmount)).toBe(660_000_000)
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373118)
       })
 
       describe('Skip bid order whose balance is not enough for cost and fee', () => {
-        const bidOrderToSkip = {
-          ...baseBidOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90269999999).toString(16)}`,
-            data: `${formatOrderData(
-              BigInt(0), // sudt 0
-              BigInt(10_000_000_000), // order amount 100
-              BigInt(900_000_000_000_000_000_000), // price amount 9
-              '00',
-            )}`,
-          }),
-        }
+        const bidOrderToSkip = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373119),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
         it('continue the loop if the bid order is not a partially matched one', () => {
           expect.assertions(5)
-          const bidOrder = {
-            ...baseBidOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: `${formatOrderData(
-                BigInt(0), // sudt 0
-                BigInt(10_000_000_000), // order amount 100
-                BigInt(900_000_000_000_000_000_000), // price amount 9
-                '00',
-              )}`,
-            }),
-          }
-
-          const askOrder = {
-            ...baseAskOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: `${formatOrderData(
-                BigInt(10_030_000_000), // sudt 100.3
-                BigInt(90_000_000_000), // order amount 900
-                BigInt(900_000_000_000_000_000_000), // 9
-                '01',
-              )}`,
-            }),
-          }
-          const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+          const bidOrder = getOrder({
+            type: 'bid',
+            price: PRICE.NINE,
+            capacity: BigInt(81_24373120),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(9 * 10 ** 8),
+          })
+          const askOrder = getOrder({
+            type: 'ask',
+            price: PRICE.NINE,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(9_02708125),
+            orderAmount: BigInt(81 * 10 ** 8),
+          })
+          const matcher = new Matcher(
+            [bidOrderToSkip, bidOrder],
+            [askOrder],
+            dealMakerCell,
+            [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+          )
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+            1,
+            8100000000,
+          ])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([900000000, 1])
           expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
         })
 
         it('break the loop if the bid order is a partially matched one', () => {
           expect.assertions(2)
-          const bidOrder = {
-            ...baseBidOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: `${formatOrderData(
-                BigInt(0), // sudt 0
-                BigInt(10_000_000_000), // order amount 100
-                BigInt(900_000_000_000_000_000_000), // price amount 9
-                '00',
-              )}`,
-            }),
-          }
+          const bidOrder = getOrder({
+            type: 'bid',
+            price: PRICE.NINE,
+            capacity: BigInt(902.7 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(100 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: `${formatOrderData(
-                BigInt(10_030_000_000), // sudt 100.3
-                BigInt(90_000_000_000), // order amount 900
-                BigInt(900_000_000_000_000_000_000), // 9
-                '01',
-              )}`,
-            }),
-          }
-          const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+          const askOrder = getOrder({
+            type: 'ask',
+            price: PRICE.NINE,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(100.3 * 10 ** 8),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
+
+          const matcher = new Matcher(
+            [bidOrderToSkip, bidOrder],
+            [askOrder],
+            dealMakerCell,
+            [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+          )
           matcher.bidOrderList[0].part = true
           matcher.match()
           expect(matcher.matchedOrderList).toHaveLength(1)
@@ -247,94 +201,72 @@ describe('Test Match', () => {
       })
 
       describe('Skip ask order whose balance is not enough for cost and fee', () => {
-        const askOrderToSkip = {
-          ...baseAskOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(10_029_999_999), // sudt 100.29999999
-              BigInt(90_000_000_000), // order amount 900
-              BigInt(900_000_000_000_000_000_000), // 9
-              '01',
-            )}`,
-          }),
-        }
+        const askOrderToSkip = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(9_02708124),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
         it('continue the loop if the ask order is not a partially matched one', () => {
           expect.assertions(5)
-          const bidOrder = {
-            ...baseBidOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: `${formatOrderData(
-                BigInt(0), // sudt 0
-                BigInt(10_000_000_000), // order amount 100
-                BigInt(900_000_000_000_000_000_000), // price amount 9
-                '00',
-              )}`,
-            }),
-          }
+          const bidOrder = getOrder({
+            type: 'bid',
+            price: PRICE.NINE,
+            capacity: BigInt(81_24373120),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(9 * 10 ** 8),
+          })
+          const askOrder = getOrder({
+            type: 'ask',
+            price: PRICE.NINE,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(9_02708125),
+            orderAmount: BigInt(81 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: `${formatOrderData(
-                BigInt(10_030_000_000), // sudt 100.3
-                BigInt(90_000_000_000), // order amount 900
-                BigInt(900_000_000_000_000_000_000), // 9
-                '01',
-              )}`,
-            }),
-          }
-          const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrderToSkip, askOrder],
+            dealMakerCell,
+            [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+          )
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+            1,
+            8100000000,
+          ])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([900000000, 1])
           expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
         })
 
         it('break the loop if the ask order is a partially matched one', () => {
           expect.assertions(2)
-          const bidOrder = {
-            ...baseBidOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90270000000).toString(16)}`,
-              data: `${formatOrderData(
-                BigInt(0), // sudt 0
-                BigInt(10_000_000_000), // order amount 100
-                BigInt(900_000_000_000_000_000_000), // price amount 9
-                '00',
-              )}`,
-            }),
-          }
+          const bidOrder = getOrder({
+            type: 'bid',
+            price: PRICE.NINE,
+            capacity: BigInt(902.7 * 10 ** 8),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(100 * 10 ** 8),
+          })
 
-          const askOrder = {
-            ...baseAskOrder,
-            price: BigInt(900_000_000_000_000_000_000), // 9
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0',
-              data: `${formatOrderData(
-                BigInt(10_030_000_000), // sudt 100.3
-                BigInt(90_000_000_000), // order amount 900
-                BigInt(900_000_000_000_000_000_000), // 9
-                '01',
-              )}`,
-            }),
-          }
-          const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+          const askOrder = getOrder({
+            type: 'ask',
+            price: PRICE.NINE,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(100.3 * 10 ** 8),
+            orderAmount: BigInt(900 * 10 ** 8),
+          })
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrderToSkip, askOrder],
+            dealMakerCell,
+            [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+          )
           matcher.askOrderList[0].part = true
           matcher.match()
           expect(matcher.matchedOrderList).toHaveLength(1)
@@ -345,82 +277,76 @@ describe('Test Match', () => {
 
     describe('Partial match', () => {
       describe('Ask Order > Bid Order', () => {
-        const bidOrder: OrderDto = {
-          ...baseBidOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(120_360_000_000).toString(16)}`, // 1203.6 ckb
-            data: `${formatOrderData(
-              BigInt(0), // 0 sudt
-              BigInt(9_000_000_000), // 90 sudt order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '00',
-            )}`,
-          }),
-        }
-        const askOrder = {
-          ...baseAskOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // 100.3 sudt
-              BigInt(120_000_000_000), // 1200 ckb order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '01',
-            )}`,
-          }),
-        }
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373120),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(12 * 10 ** 8),
+          orderAmount: BigInt(100 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount when no bid order left', () => {
           expect.assertions(5)
-          // traded 900 ckb and 90 sudt
-          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
+          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([30_090_000_000, 90_000_000_000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_000_000_000, 1_003_000_000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 30_000_000_000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+            1,
+            81_00000000,
+          ])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_00000000, 2_97291876])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 19_00000000])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
         })
 
         describe('Skip bid order whose balance is not enough for cost and fee', () => {
-          const bidOrderToSkip = {
-            ...baseBidOrder,
-            price: BigInt(1_000_000_000_000_000_000_000), // 10
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90_269_999_999).toString(16)}`, // 902.69999999 ckb
-              data: `${formatOrderData(
-                BigInt(0), // 0 sudt
-                BigInt(9_000_000_000), // 90 sudt order amount
-                BigInt(1_000_000_000_000_000_000_000), // 10 price
-                '00',
-              )}`,
-            }),
-          }
+          const bidOrderToSkip = getOrder({
+            type: 'bid',
+            price: PRICE.TEN,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(90 * 10 ** 8),
+          })
 
           it('continue the loop if the bid order is not a partially matched one', () => {
             expect.assertions(5)
-            // traded 900 ckb and 90 sudt
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.match()
 
-            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([30_090_000_000, 90_000_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_000_000_000, 1_003_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 30_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+              1,
+              81_00000000,
+            ])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_00000000, 2_97291876])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 19_00000000])
 
-            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
-            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
           })
 
           it('break the loop if the bid order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.bidOrderList[0].part = true
             matcher.match()
 
@@ -430,38 +356,43 @@ describe('Test Match', () => {
         })
 
         describe('Skip ask order whose balance is not enough for cost and fee', () => {
-          const askOrderToSkip = {
-            ...baseAskOrder,
-            price: BigInt(1_000_000_000_000_000_000_000), // 10
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0', // 0 ckb
-              data: `${formatOrderData(
-                BigInt(9_026_999_999), // 90.26999999 sudt
-                BigInt(120_000_000_000), // 1200 ckb order amount
-                BigInt(1_000_000_000_000_000_000_000), // 10 price
-                '01',
-              )}`,
-            }),
-          }
+          const askOrderToSkip = getOrder({
+            type: 'ask',
+            price: PRICE.NINE,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(9 * 10 ** 8),
+            orderAmount: BigInt(81 * 10 ** 8),
+          })
 
           it('continue the loop if the ask order is not a partially matched one', () => {
             expect.assertions(5)
-            // traded 900 ckb and 90 sudt
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+            )
             matcher.match()
 
-            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([30_090_000_000, 90_000_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9_000_000_000, 1_003_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 30_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+              1,
+              81_00000000,
+            ])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([9 * 10 ** 8, 297291876])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 19_00000000])
 
-            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
-            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
           })
 
           it('break the loop if the ask order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+            )
             matcher.askOrderList[0].part = true
             matcher.match()
 
@@ -472,82 +403,76 @@ describe('Test Match', () => {
       })
 
       describe('Ask Order < Bid Order', () => {
-        const bidOrder: OrderDto = {
-          ...baseBidOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(120_360_000_000).toString(16)}`, // 1203.6 ckb
-            data: `${formatOrderData(
-              BigInt(0), // 0 sudt
-              BigInt(12_000_000_000), // 120 sudt order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '00',
-            )}`,
-          }),
-        }
-        const askOrder = {
-          ...baseAskOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // 100.3 sudt
-              BigInt(90_000_000_000), // 900 ckb order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '01',
-            )}`,
-          }),
-        }
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(100 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(10 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(9_02708125),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount when no ask order left', () => {
           expect.assertions(5)
-          // traded 900 ckb and 90 sudt
-          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell)
+          const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([90_000_000_000, 30_090_000_000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1_003_000_000, 9_000_000_000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 3_000_000_000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+            8100000000,
+            1875626881,
+          ])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1, 9_00000000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 1_00000000])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
         })
 
         describe('Skip bid order whose balance is not enough for cost and fee', () => {
-          const bidOrderToSkip = {
-            ...baseBidOrder,
-            price: BigInt(1_000_000_000_000_000_000_000), // 10
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: `0x${(90_269_999_999).toString(16)}`, // 902.69999999 ckb
-              data: `${formatOrderData(
-                BigInt(0), // 0 sudt
-                BigInt(12_000_000_000), // 120 sudt order amount
-                BigInt(1_000_000_000_000_000_000_000), // 10 price
-                '00',
-              )}`,
-            }),
-          }
+          const bidOrderToSkip = getOrder({
+            type: 'bid',
+            price: PRICE.NINE,
+            capacity: BigInt(81_00000000),
+            sudtAmount: BigInt(0),
+            orderAmount: BigInt(10 * 10 ** 8),
+          })
 
           it('continue the loop if the bid order is not a partially matched one', () => {
             expect.assertions(5)
-            // traded 900 ckb and 90 sudt
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.match()
 
-            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([90_000_000_000, 30_090_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1_003_000_000, 9_000_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 3_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+              8100000000,
+              1875626881,
+            ])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1, 9_00000000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 1_00000000])
 
-            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
-            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
           })
 
           it('break the loop if the bid order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrderToSkip, bidOrder], [askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrderToSkip, bidOrder],
+              [askOrder],
+              dealMakerCell,
+              [bidOrderToSkip, bidOrder, askOrder].map(getMockLock),
+            )
             matcher.bidOrderList[0].part = true
             matcher.match()
 
@@ -555,39 +480,44 @@ describe('Test Match', () => {
             expect(matcher.matchedOrderList[0].id).toBe(bidOrderToSkip.id)
           })
         })
-        describe('Skip ask order whose balance is not enough for cost and fee', () => {
-          const askOrderToSkip = {
-            ...baseAskOrder,
-            price: BigInt(1_000_000_000_000_000_000_000), // 10
-            output: JSON.stringify({
-              ...baseScripts,
-              capacity: '0x0', // 0 ckb
-              data: `${formatOrderData(
-                BigInt(9_026_999_999), // 90.26999999 sudt
-                BigInt(90_000_000_000), // 900 ckb order amount
-                BigInt(1_000_000_000_000_000_000_000), // 10 price
-                '01',
-              )}`,
-            }),
-          }
 
+        describe('Skip ask order whose balance is not enough for cost and fee', () => {
+          const askOrderToSkip = getOrder({
+            type: 'ask',
+            price: PRICE.NINE,
+            capacity: BigInt(0),
+            sudtAmount: BigInt(1 * 10 ** 8),
+            orderAmount: BigInt(9 * 10 ** 8),
+          })
           it('continue the loop if the ask order is not a partially matched one', () => {
             expect.assertions(5)
-            // traded 900 ckb and 90 sudt
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrder].map(getMockLock),
+            )
             matcher.match()
 
-            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([90_000_000_000, 30_090_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1_003_000_000, 9_000_000_000])
-            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 3_000_000_000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+              81_00000000,
+              1875626881,
+            ])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1, 9_00000000])
+            expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 1_00000000])
 
-            expect(Number(matcher.dealMakerSudtAmount)).toBe(27_000_000)
-            expect(Number(matcher.dealMakerCapacityAmount)).toBe(270_000_000)
+            expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+            expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
           })
 
           it('break the loop if the ask order is a partially matched one', () => {
             expect.assertions(2)
-            const matcher = new Matcher([bidOrder], [askOrderToSkip, askOrder], dealMakerCell)
+            const matcher = new Matcher(
+              [bidOrder],
+              [askOrderToSkip, askOrder],
+              dealMakerCell,
+              [bidOrder, askOrderToSkip, askOrderToSkip].map(getMockLock),
+            )
             matcher.askOrderList[0].part = true
             matcher.match()
 
@@ -598,147 +528,191 @@ describe('Test Match', () => {
       })
 
       describe('2 Ask Order < 1 Bid Order', () => {
-        const bidOrder = {
-          ...baseBidOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(230_660_000_000).toString(16)}`, // 2306.6 ckb
-            data: formatOrderData(
-              BigInt(0), // 0 sudt
-              BigInt(23_000_000_000), // 230 sudt order amount
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '00',
-            ),
-          }),
-        }
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(200 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(30 * 10 ** 8),
+        })
 
-        const askOrder_1 = {
-          ...baseAskOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: formatOrderData(
-              BigInt(12_036_000_000), // 120.36 sudt
-              BigInt(108_000_000_000), // 1080 ckb order amount
-              BigInt(900_000_000_000_000_000_000), // 9
-              '01',
-            ),
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
-          price: BigInt(950_000_000_000_000_000_000), // 9.5
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: formatOrderData(
-              BigInt(10_030_000_000), // 100.3 sudt
-              BigInt(95_000_000_000), // 950 ckb order amount
-              BigInt(950_000_000_000_000_000_000), // 9.5 price
-              '01',
-            ),
-          }),
-        }
+        const askOrder_1 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100 * 10 ** 8),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
+
+        const askOrder_2 = getOrder({
+          type: 'ask',
+          price: PRICE.EIGHT,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(1000 * 10 ** 8),
+          orderAmount: BigInt(72 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount', () => {
           expect.assertions(5)
-          const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrder_1, askOrder_2],
+            dealMakerCell,
+            [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+          )
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([
-            107999999994,
-            94999999965,
-            27051000043,
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+            81_00000000,
+            72_00000000,
+            37_75626881,
           ])
           expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([
-            633473685,
-            257179491,
-            21112010792,
+            90_97291876,
+            99_097291876,
+            18_00000000,
           ])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([6, 35, 1887989208])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 12_00000000])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(63336032)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(608999998)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(5416248)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(924373119)
         })
       })
 
       describe('2 Ask Order > 1 Bid Order', () => {
-        const bidOrder = {
-          ...baseBidOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(230690000000).toString(16)}`, // 2306.9 ckb
-            data: formatOrderData(
-              BigInt(0), // 0 sudt
-              BigInt(23_000_000_000), // 230 sudt order amount / 2300 ckb
-              BigInt(1_000_000_000_000_000_000_000), // 10 price
-              '00',
-            ),
-          }),
-        }
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(200 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(15 * 10 ** 8),
+        })
 
-        const askOrder_1 = {
-          ...baseAskOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: formatOrderData(
-              BigInt(12_036_000_000), // 120.36 sudt
-              BigInt(120_000_000_000), // 1200 ckb order amount / 120 sudt
-              BigInt(1_000_000_000_000_000_000_000), // 10
-              '01',
-            ),
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
-          price: BigInt(1_000_000_000_000_000_000_000), // 10
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0', // 0 ckb
-            data: formatOrderData(
-              BigInt(12_036_000_000), // 120.36 sudt
-              BigInt(120_000_000_000), // 1200 ckb order amount / 120 sudt
-              BigInt(1_000_000_000_000_000_000_000), // 10
-              '01',
-            ),
-          }),
-        }
+        const askOrder_1 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100 * 10 ** 8),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
+
+        const askOrder_2 = getOrder({
+          type: 'ask',
+          price: PRICE.EIGHT,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(1000 * 10 ** 8),
+          orderAmount: BigInt(72 * 10 ** 8),
+        })
 
         it('return correct capacity and sudt amount', () => {
           expect.assertions(5)
-          const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+          const matcher = new Matcher(
+            [bidOrder],
+            [askOrder_1, askOrder_2],
+            dealMakerCell,
+            [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+          )
           matcher.match()
 
-          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([120000000000, 0, 110000000000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([0, 23000000000, 1003000000])
-          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 10000000000])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+            81_00000000,
+            64_59378135,
+            54_00000000,
+          ])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([
+            9097291876,
+            1500000000,
+            99325000000,
+          ])
+          expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0, 1800000000])
 
-          expect(Number(matcher.dealMakerSudtAmount)).toBe(69000000)
-          expect(Number(matcher.dealMakerCapacityAmount)).toBe(690000000)
+          expect(Number(matcher.dealMakerSudtAmount)).toBe(77708124)
+          expect(Number(matcher.dealMakerCapacityAmount)).toBe(40621865)
         })
       })
     })
 
+    describe('Over paid', () => {
+      it('ASK order over paid', () => {
+        expect.assertions(5)
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.TEN,
+          capacity: BigInt(100_00000000),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(1 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.FIVE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(10_20000000),
+          orderAmount: BigInt(10 * 10 ** 8),
+        })
+        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
+        matcher.match()
+
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          8996990973,
+          1000000000,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([100000000, 819398195])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(100601805)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(3009027)
+      })
+
+      it('Bid order over paid', () => {
+        expect.assertions(5)
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373120),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
+
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.EIGHT,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(10_20000000),
+          orderAmount: BigInt(72 * 10 ** 8),
+        })
+        const matcher = new Matcher([bidOrder], [askOrder], dealMakerCell, [bidOrder, askOrder].map(getMockLock))
+        matcher.match()
+
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          24373120,
+          7200000000,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([900000000, 117291876])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(900000000)
+      })
+    })
+
     describe("Ask price is greater than bid price, can't match", () => {
-      const askOrder_7 = {
-        ...baseAskOrder,
-        price: BigInt(11 * 10 ** 20),
-        output: `{"capacity":"0x0","lock":{"code_hash":"0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160","hash_type":"data","args":"0x688327ab52c054a99b30f2287de0f5ee67805ded"},"type":{"code_hash":"0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740","hash_type":"type","args":"0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7"},"data":"${formatOrderData(
-          BigInt(10_030_000_000),
-          BigInt(1100 * 10 ** 8),
-          BigInt(1_100_000_000_000_000_000_000),
-          '01',
-        )}"}`,
-      }
+      const askOrderWithHigherPrice = getOrder({
+        type: 'ask',
+        price: PRICE.ELEVEN,
+        capacity: BigInt(0),
+        sudtAmount: BigInt(100 * 10 ** 8),
+        orderAmount: BigInt(1100 * 10 ** 8),
+      })
 
       it('returns empty array', () => {
         expect.assertions(3)
-        const matcher = new Matcher([baseBidOrder], [askOrder_7], dealMakerCell)
+        const matcher = new Matcher(
+          [BASE_BID_ORDER],
+          [askOrderWithHigherPrice],
+          dealMakerCell,
+          [BASE_BID_ORDER, askOrderWithHigherPrice].map(getMockLock),
+        )
         matcher.match()
 
         expect(matcher.matchedOrderList).toHaveLength(0)
@@ -749,189 +723,151 @@ describe('Test Match', () => {
     })
 
     describe('Handle order whose balance is not enough', () => {
-      const bidOrder = {
-        ...baseBidOrder,
-        price: BigInt(1_000_000_000_000_000_000_000), // 10
-        output: JSON.stringify({
-          ...baseScripts,
-          capacity: `0x${(230660000000).toString(16)}`, // 2306.6 ckb
-          data: formatOrderData(
-            BigInt(0), // 0 sudt
-            BigInt(23_000_000_000), // 230 sudt order amount / 2300 ckb
-            BigInt(1_000_000_000_000_000_000_000), // 10 price
-            '00',
-          ),
-        }),
-      }
+      const bidOrder = getOrder({
+        type: 'bid',
+        price: PRICE.NINE,
+        capacity: BigInt(100 * 10 ** 8),
+        sudtAmount: BigInt(0),
+        orderAmount: BigInt(18 * 10 ** 8),
+      })
 
-      const askOrder_1 = {
-        ...baseAskOrder,
-        price: BigInt(1_000_000_000_000_000_000_000), // 10
-        output: JSON.stringify({
-          ...baseScripts,
-          capacity: '0x0', // 0 ckb
-          data: formatOrderData(
-            BigInt(12_036_000_000), // 120.36 sudt
-            BigInt(120_000_000_000), // 1200 ckb order amount / 120 sudt
-            BigInt(1_000_000_000_000_000_000_000), // 10
-            '01',
-          ),
-        }),
-      }
-      const askOrder_2 = {
-        ...baseAskOrder,
-        price: BigInt(1_000_000_000_000_000_000_000), // 10
-        output: JSON.stringify({
-          ...baseScripts,
-          capacity: '0x0', // 0 ckb
-          data: formatOrderData(
-            BigInt(12_036_000_000), // 120.36 sudt
-            BigInt(120_000_000_000), // 1200 ckb order amount / 120 sudt
-            BigInt(1_000_000_000_000_000_000_000), // 10
-            '01',
-          ),
-        }),
-      }
+      const askOrder_1 = getOrder({
+        type: 'ask',
+        price: PRICE.NINE,
+        capacity: BigInt(0),
+        sudtAmount: BigInt(9 * 10 ** 8),
+        orderAmount: BigInt(81 * 10 ** 8),
+      })
+      const askOrder_2 = getOrder({
+        type: 'ask',
+        price: PRICE.NINE,
+        capacity: BigInt(0),
+        sudtAmount: BigInt(9_02708125),
+        orderAmount: BigInt(81 * 10 ** 8),
+      })
 
-      it('skip unmeeting order', () => {
+      it('skip unmet order', () => {
         expect.assertions(5)
-        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        const matcher = new Matcher(
+          [bidOrder],
+          [askOrder_1, askOrder_2],
+          dealMakerCell,
+          [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+        )
         matcher.match()
 
-        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([120000000000, 110300000000])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([0, 12000000000])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 11000000000])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          81_00000000,
+          1875626881,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1, 9_00000000])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 9_00000000])
 
-        expect(Number(matcher.dealMakerSudtAmount)).toBe(36000000)
-        expect(Number(matcher.dealMakerCapacityAmount)).toBe(360000000)
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
       })
     })
 
     describe('Skip ask order whose order amount is 0', () => {
       it('Skip 1st ask order', () => {
         expect.assertions(5)
-        const bidOrder = {
-          ...baseBidOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)}`,
-            data: `${formatOrderData(
-              BigInt(0), // sudt 0
-              BigInt(10_000_000_000), // order amount 100
-              BigInt(900_000_000_000_000_000_000), // price amount 9
-              '00',
-            )}`,
-          }),
-        }
+        const bidOrder = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(100 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(18 * 10 ** 8),
+        })
 
-        const askOrder_1 = {
-          ...baseAskOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // sudt 100.3
-              BigInt(0), // order amount 0
-              BigInt(900_000_000_000_000_000_000), // 9
-              '01',
-            )}`,
-          }),
-        }
-        const askOrder_2 = {
-          ...baseAskOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // sudt 100.3
-              BigInt(90_000_000_000), // order amount 900
-              BigInt(900_000_000_000_000_000_000), // 9
-              '01',
-            )}`,
-          }),
-        }
-        const matcher = new Matcher([bidOrder], [askOrder_1, askOrder_2], dealMakerCell)
+        const askOrder_1 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(100 * 10 ** 8),
+          orderAmount: BigInt(0),
+        })
+        const askOrder_2 = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(9_02708125),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
+
+        const matcher = new Matcher(
+          [bidOrder],
+          [askOrder_1, askOrder_2],
+          dealMakerCell,
+          [bidOrder, askOrder_1, askOrder_2].map(getMockLock),
+        )
         matcher.match()
 
-        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          81_00000000,
+          1875626881,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([1, 9_00000000])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 9_00000000])
 
-        expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
-        expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
       })
     })
 
     describe('Skip bid order whose order amount is 0', () => {
-      it('Skip 1st bid order', () => {
+      it('Skip 1st bid order whose order amount is 0', () => {
         expect.assertions(5)
-        const bidOrder_1 = {
-          ...baseBidOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)}`,
-            data: `${formatOrderData(
-              BigInt(0), // sudt 0
-              BigInt(0), // order amount 0
-              BigInt(900_000_000_000_000_000_000), // price amount 9
-              '00',
-            )}`,
-          }),
-        }
+        const bidOrder_1 = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(100 * 10 ** 8),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(0),
+        })
 
-        const bidOrder_2 = {
-          ...baseBidOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: `0x${(90270000000).toString(16)}`,
-            data: `${formatOrderData(
-              BigInt(0), // sudt 0
-              BigInt(10_000_000_000), // order amount 100
-              BigInt(900_000_000_000_000_000_000), // price amount 9
-              '00',
-            )}`,
-          }),
-        }
+        const bidOrder_2 = getOrder({
+          type: 'bid',
+          price: PRICE.NINE,
+          capacity: BigInt(81_24373120),
+          sudtAmount: BigInt(0),
+          orderAmount: BigInt(9 * 10 ** 8),
+        })
 
-        const askOrder = {
-          ...baseAskOrder,
-          price: BigInt(900_000_000_000_000_000_000), // 9
-          output: JSON.stringify({
-            ...baseScripts,
-            capacity: '0x0',
-            data: `${formatOrderData(
-              BigInt(10_030_000_000), // sudt 100.3
-              BigInt(90_000_000_000), // order amount 900
-              BigInt(900_000_000_000_000_000_000), // 9
-              '01',
-            )}`,
-          }),
-        }
-        const matcher = new Matcher([bidOrder_1, bidOrder_2], [askOrder], dealMakerCell)
+        const askOrder = getOrder({
+          type: 'ask',
+          price: PRICE.NINE,
+          capacity: BigInt(0),
+          sudtAmount: BigInt(9_02708125),
+          orderAmount: BigInt(81 * 10 ** 8),
+        })
+        const matcher = new Matcher(
+          [bidOrder_1, bidOrder_2],
+          [askOrder],
+          dealMakerCell,
+          [bidOrder_1, bidOrder_2, askOrder].map(getMockLock),
+        )
         matcher.match()
 
-        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity))).toEqual([0, 90000000000])
-        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([10000000000, 0])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.capacity - ORDER_CELL_MIN_CAPACITY))).toEqual([
+          1,
+          8100000000,
+        ])
+        expect(matcher.matchedOrderList.map(o => Number(o.info.sudtAmount))).toEqual([900000000, 1])
         expect(matcher.matchedOrderList.map(o => Number(o.info.orderAmount))).toEqual([0, 0])
 
-        expect(Number(matcher.dealMakerSudtAmount)).toBe(30000000)
-        expect(Number(matcher.dealMakerCapacityAmount)).toBe(270000000)
+        expect(Number(matcher.dealMakerSudtAmount)).toBe(2708124)
+        expect(Number(matcher.dealMakerCapacityAmount)).toBe(24373119)
       })
     })
   })
 
   describe('Transaction', () => {
     it('should return null is no matched orders', () => {
-      const matcher = new Matcher([], [], dealMakerCell)
+      const matcher = new Matcher([], [], dealMakerCell, [])
       expect(matcher.rawTx).toBeNull()
     })
     it('should return tx when orders matched', () => {
-      const matcher = new Matcher([], [], dealMakerCell)
+      const matcher = new Matcher([], [], dealMakerCell, [])
       matcher.dealMakerCell = dealMakerCell
       matcher.matchedOrderList = [
         {
@@ -949,12 +885,13 @@ describe('Test Match', () => {
             },
           },
           info: {
-            sudtAmount: BigInt(10000000000),
-            orderAmount: BigInt(0),
-            price: BigInt(900000000000000000000),
-            capacity: BigInt(0),
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('10000000'),
+            price: PRICE.NINE,
+            capacity: BigInt('1000000000000000000000000'),
             type: OrderType.Bid,
           },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
         },
         {
           id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
@@ -962,7 +899,7 @@ describe('Test Match', () => {
             lock: {
               codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
               hashType: 'data',
-              args: '0xffffffffffffffffffffffffffffffffffffffff',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
             },
             type: {
               codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
@@ -971,12 +908,13 @@ describe('Test Match', () => {
             },
           },
           info: {
-            sudtAmount: BigInt(0),
-            orderAmount: BigInt(0),
-            price: BigInt(900000000000000000000),
-            capacity: BigInt(90000000000),
+            sudtAmount: BigInt('100000000000000000'),
+            orderAmount: BigInt('10000000000'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
             type: OrderType.Ask,
           },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
         },
       ]
       matcher.dealMakerCapacityAmount = BigInt(100000000)
@@ -1004,12 +942,12 @@ describe('Test Match', () => {
         witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x'],
         outputs: [
           {
-            capacity: '0x5e815c0',
+            capacity: '0x5e844a0',
             lock: { codeHash: '0x', hashType: 'data', args: '0x' },
             type: { codeHash: '0x', hashType: 'data', args: '0x' },
           },
           {
-            capacity: '0x0',
+            capacity: '0xd3c21bcecceda1000000',
             lock: {
               codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
               hashType: 'data',
@@ -1026,7 +964,7 @@ describe('Test Match', () => {
             lock: {
               codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
               hashType: 'data',
-              args: '0xffffffffffffffffffffffffffffffffffffffff',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
             },
             type: {
               codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
@@ -1037,8 +975,339 @@ describe('Test Match', () => {
         ],
         outputsData: [
           '0x00000000000000000000000000000000',
-          '0x00e40b54020000000000000000000000000000000000000000000000000000000000907b984f02ca300000000000000000',
-          '0x00000000000000000000000000000000000000000000000000000000000000000000907b984f02ca300000000000000001',
+          '0x00e40b54020000000000000000000000018096980000000000000000000000000009000000000000000000',
+          '0x00008a5d7845630100000000000000000100e40b5402000000000000000000000009000000000000000001',
+        ],
+      })
+    })
+
+    it('should claim orders', () => {
+      const matcher = new Matcher([], [], dealMakerCell, [])
+      matcher.dealMakerCell = dealMakerCell
+      const ownerLock = {
+        codeHash: BASE_SCRIPTS.lock.code_hash,
+        hashType: BASE_SCRIPTS.lock.hash_type,
+        args: BASE_SCRIPTS.lock.args,
+      }
+      const ORDER_SCRIPTS = {
+        lock: {
+          codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+          hashType: 'data' as CKBComponents.ScriptHashType,
+          args: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+        },
+        type: {
+          codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+          hashType: 'type' as CKBComponents.ScriptHashType,
+          args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+        },
+      }
+      const orders = {
+        bidOrderWithEmptyOrderAmount: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('0'),
+            price: PRICE.NINE,
+            capacity: BigInt('1000000000000000000000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        bidOrderWithLowBalance: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x1',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('10000000'),
+            price: PRICE.NINE,
+            capacity: BigInt('15400000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        bidOrderWithLowBalanceAndPositivePriceExponent: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x1',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('1'),
+            orderAmount: BigInt('10000000'),
+            price: {
+              effect: BigInt(1),
+              exponent: BigInt(10),
+            },
+            capacity: BigInt('15400000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        askOrderWithEmptyOrderAmount: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('0'),
+            orderAmount: BigInt('0'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        askOrderWithLowBalance: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x3',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('0'),
+            orderAmount: BigInt('10000000000'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        askOrderWithSudtBalance: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x4',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('100000000000000000'),
+            orderAmount: BigInt('0'),
+            price: PRICE.NINE,
+            capacity: BigInt('90000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+      }
+      matcher.matchedOrderList = [
+        orders.bidOrderWithEmptyOrderAmount,
+        orders.bidOrderWithLowBalance,
+        orders.bidOrderWithLowBalanceAndPositivePriceExponent,
+        orders.askOrderWithEmptyOrderAmount,
+        orders.askOrderWithLowBalance,
+        orders.askOrderWithSudtBalance,
+      ]
+      matcher.dealMakerCapacityAmount = BigInt(100000000)
+      expect(matcher.rawTx).toEqual({
+        version: '0x0',
+        headerDeps: [],
+        cellDeps: MATCH_ORDERS_CELL_DEPS,
+        inputs: [
+          { previousOutput: { txHash: '0x0', index: '0x0' }, since: '0x0' },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x0',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x1',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x2',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x3',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x4',
+            },
+            since: '0x0',
+          },
+        ],
+        witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x', '0x', '0x', '0x', '0x'],
+        outputs: [
+          {
+            capacity: '0x5dcdac0',
+            lock: { codeHash: '0x', hashType: 'data', args: '0x' },
+            type: { codeHash: '0x', hashType: 'data', args: '0x' },
+          },
+          {
+            capacity: '0xd3c21bcecceda1000000',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x395e95a00',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x395e95a00',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x14f46b0400',
+            lock: ownerLock,
+            type: null,
+          },
+          {
+            capacity: '0x14f46b0400',
+            lock: ownerLock,
+            type: null,
+          },
+          {
+            capacity: '0x14f46b0400',
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+        ],
+        outputsData: [
+          '0x00000000000000000000000000000000',
+          '0x00e40b54020000000000000000000000',
+          '0x00e40b54020000000000000000000000',
+          '0x01000000000000000000000000000000',
+          '0x',
+          '0x',
+          '0x00008a5d784563010000000000000000',
+        ],
+      })
+    })
+
+    it('should claim order with specific demo condition', () => {
+      const matcher = new Matcher([], [], dealMakerCell, [])
+      matcher.dealMakerCell = dealMakerCell
+      const ownerLock = {
+        codeHash: BASE_SCRIPTS.lock.code_hash,
+        hashType: BASE_SCRIPTS.lock.hash_type,
+        args: BASE_SCRIPTS.lock.args,
+      }
+      const ORDER_SCRIPTS = {
+        lock: {
+          codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+          hashType: 'data' as CKBComponents.ScriptHashType,
+          args: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+        },
+        type: {
+          codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+          hashType: 'type' as CKBComponents.ScriptHashType,
+          args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+        },
+      }
+      const orders = {
+        cannotBeMatchedBidOrder: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x0',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('10000'),
+            price: {
+              effect: BigInt('123456789012345678'),
+              exponent: BigInt(-17),
+            },
+            capacity: BigInt('1000000000000000000000000'),
+            type: OrderType.Bid,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+        cannotBeMatchedAskOrder: {
+          id: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee-0x2',
+          scripts: ORDER_SCRIPTS,
+          info: {
+            sudtAmount: BigInt('10000000000'),
+            orderAmount: BigInt('100000000000000'),
+            price: {
+              effect: BigInt('123456789012345678'),
+              exponent: BigInt(-17),
+            },
+            capacity: BigInt('90000000000000000000'),
+            type: OrderType.Ask,
+          },
+          ownerLock: getMockLock({ ownerLockHash: '' }),
+        },
+      }
+      matcher.matchedOrderList = [orders.cannotBeMatchedBidOrder, orders.cannotBeMatchedAskOrder]
+      matcher.dealMakerCapacityAmount = BigInt(100000000)
+      expect(matcher.rawTx).toEqual({
+        version: '0x0',
+        headerDeps: [],
+        cellDeps: MATCH_ORDERS_CELL_DEPS,
+        inputs: [
+          { previousOutput: { txHash: '0x0', index: '0x0' }, since: '0x0' },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x0',
+            },
+            since: '0x0',
+          },
+          {
+            previousOutput: {
+              txHash: '0x64f2586de4d3861d8b9a6d43a21752006b5b7b0991ad7735d8b93d596f516dee',
+              index: '0x2',
+            },
+            since: '0x0',
+          },
+        ],
+        witnesses: [{ lock: '', inputType: '', outputType: '' }, '0x', '0x'],
+        outputs: [
+          {
+            capacity: '0x5e91790',
+            lock: { codeHash: '0x', hashType: 'data', args: '0x' },
+            type: { codeHash: '0x', hashType: 'data', args: '0x' },
+          },
+          {
+            capacity: '0xd3c21bcecceda1000000',
+            lock: ownerLock,
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+          {
+            capacity: '0x4e1003b28d9280000',
+            lock: {
+              codeHash: '0x04878826e4bf143a93eb33cb298a46f96e4014533d98865983e048712da65160',
+              hashType: 'data',
+              args: '0x688327ab52c054a99b30f2287de0f5ee67805ded',
+            },
+            type: {
+              codeHash: '0xc68fb287d8c04fd354f8332c3d81ca827deea2a92f12526e2f35be37968f6740',
+              hashType: 'type',
+              args: '0xbe7e812b85b692515a21ea3d5aed0ad37dccb3fcd86e9b8d6a30ac24808db1f7',
+            },
+          },
+        ],
+        outputsData: [
+          '0x00000000000000000000000000000000',
+          '0x00e40b54020000000000000000000000',
+          '0x00e40b54020000000000000000000000',
         ],
       })
     })
