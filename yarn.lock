@@ -282,22 +282,22 @@
     immutable "^4.0.0-rc.12"
     xxhash "^0.3.0"
 
-"@ckb-lumos/base@^0.13.1":
-  version "0.13.1"
-  resolved "https://registry.npmjs.org/@ckb-lumos/base/-/base-0.13.1.tgz#6439b230bd64e3b6d64fbe0d9c19806b5fbf7ea7"
-  integrity sha512-elJLWRAfLxQ1AKxed3HmBGcDc9TDUV4As9586Qe78BKf8rf7nOQ1VVyaWpUePo7vCPKclXkulY3XpwqnBKtmOg==
+"@ckb-lumos/base@^0.13.2":
+  version "0.13.3"
+  resolved "https://registry.yarnpkg.com/@ckb-lumos/base/-/base-0.13.3.tgz#053d6c94b308b6e03be575190626293dc4f24e6c"
+  integrity sha512-cHBV1ZHDZq7VQWUm8IQ7Slm3QYl2eIbNZSkzBKIYijmjjtMj9YihvU+0YIVNUaoDaBE7IeLLCfbSZFPLwTMrLA==
   dependencies:
     blake2b "^2.1.3"
     ckb-js-toolkit "^0.9.2"
     immutable "^4.0.0-rc.12"
     xxhash "^0.3.0"
 
-"@ckb-lumos/indexer@0.13.1":
-  version "0.13.1"
-  resolved "https://registry.npmjs.org/@ckb-lumos/indexer/-/indexer-0.13.1.tgz#34a802d63feababc5978cbd95bb018729a9fb34a"
-  integrity sha512-DALifC8ciwec/f3NF55MaK7CXAx2TZgKUZgPPNiaP6H6AhlrVePK0blxTx9pggMFFnLkRbzix6nflZAVdWyO5g==
+"@ckb-lumos/indexer@0.13.2":
+  version "0.13.2"
+  resolved "https://registry.yarnpkg.com/@ckb-lumos/indexer/-/indexer-0.13.2.tgz#e0906ebc7fd19cdfa0c7b27e992eba36051d0602"
+  integrity sha512-wezbTGqeVvaNqcHdBzWGVHUm6xXckSBolYRKg5IqsE1kuY9AfCnBhtEVyHsMPP/AygyGNpUB4E9erFHSz8dUaA==
   dependencies:
-    "@ckb-lumos/base" "^0.13.1"
+    "@ckb-lumos/base" "^0.13.2"
     ckb-js-toolkit "^0.9.2"
     immutable "^4.0.0-rc.12"
     neon-cli "^0.4.0"
