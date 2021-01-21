@@ -1,6 +1,7 @@
 import { createConnection, getConnection } from 'typeorm'
 import OrderRepository from './order.repository'
 import { OrderType } from './order.entity'
+import { getPrice } from '../../utils'
 import {
   askOrderWithLowerPrice,
   askOrderWithHigherPrice,
@@ -8,7 +9,6 @@ import {
   bidOrderWithLowerPrice,
   orderWithZeroAmount,
   orderWithWrongType,
-  orderWithAskButSudtAmountZero,
 } from '../../mock'
 
 describe('Test order repository', () => {
@@ -142,8 +142,8 @@ describe('Test order repository', () => {
       )
       expect(askOrders).toHaveLength(2)
       expect(bidOrders).toHaveLength(2)
-      expect(BigInt(askOrders[0].price)).toBeLessThan(BigInt(askOrders[1].price))
-      expect(BigInt(bidOrders[0].price)).toBeGreaterThan(BigInt(bidOrders[1].price))
+      expect(getPrice(askOrders[0].price).isLessThan(getPrice(askOrders[1].price))).toBeTruthy()
+      expect(getPrice(bidOrders[0].price).isGreaterThan(getPrice(bidOrders[1].price))).toBeTruthy()
     })
 
     it('should skip pending orders', async () => {
@@ -191,14 +191,6 @@ describe('Test order repository', () => {
       let orders = await orderRepository.find()
       expect(orders.map(o => o.type)).toEqual([OrderType.Ask, OrderType.Ask])
       await orderRepository.flushAllOrders([orderWithWrongType])
-      orders = await orderRepository.find()
-      expect(orders.map(o => o.type)).toEqual([])
-    })
-
-    it('should skip orders which is ask but with zero sudt amount', async () => {
-      let orders = await orderRepository.find()
-      expect(orders.map(o => o.type)).toEqual([OrderType.Ask, OrderType.Ask])
-      await orderRepository.flushAllOrders([orderWithAskButSudtAmountZero])
       orders = await orderRepository.find()
       expect(orders.map(o => o.type)).toEqual([])
     })

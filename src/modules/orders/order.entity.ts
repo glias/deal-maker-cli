@@ -16,12 +16,18 @@ export class Order {
   @Column('int8')
   type!: OrderType
 
-  @Column('varchar', { length: 16 })
-  price!: string
+  @Column('varchar', { length: 16, name: 'price_effect' })
+  priceEffect!: string
+
+  @Column('int', { name: 'price_exponent' })
+  priceExponent!: number
 
   @Column('int', { name: 'block_number' })
   blockNumber!: number
 
   @Column('varchar')
   output!: string
+
+  @Column('varchar', { name: 'owner_lock_hash' })
+  ownerLockHash!: string
 }
