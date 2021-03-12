@@ -4,7 +4,7 @@
   "description": "",
   "bin": "lib/cli/index.js",
   "engines": {
-    "node": ">=12 <13"
+    "node": ">=12 <15"
   },
   "scripts": {
     "start": "cross-env NODE_ENV=development ts-node src/cli run",
@@ -40,7 +40,7 @@
     "@ckb-lumos/base": "0.13.2",
     "@types/cron": "1.7.2",
     "@types/jest": "26.0.19",
-    "@types/node": "14.14.16",
+    "@types/node": "14.14.34",
     "@types/socket.io": "2.1.11",
     "cross-env": "7.0.3",
     "fetch-mock": "9.10.7",
