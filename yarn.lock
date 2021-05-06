@@ -541,14 +541,14 @@
     "@types/yargs" "^15.0.0"
     chalk "^4.0.0"
 
-"@nervosnetwork/ckb-sdk-core@0.38.2":
-  version "0.38.2"
-  resolved "https://registry.npmjs.org/@nervosnetwork/ckb-sdk-core/-/ckb-sdk-core-0.38.2.tgz#26f3dc8e29d5843662d5339536da6cb927b4c351"
-  integrity sha512-rmyfAs5nhFuZeuAyu47gZPe5ZAzBt9GJdW9gmp0GTU7ed35H17uK1EjGgpzEkbz9yozVs36SCh3Lpa80csnggQ==
+"@nervosnetwork/ckb-sdk-core@0.41.0":
+  version "0.41.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-core/-/ckb-sdk-core-0.41.0.tgz#4a9fe638ef13460ffafd7efae79632a7d589e50f"
+  integrity sha512-Qi5PNNdRno2chCERKT9gD4s9LNU5zSr2FXqw8qxEb5PWm9H7/PGnYY68vb3A5B+Hp8A+4nHX/COKoqJUL2A4nw==
   dependencies:
-    "@nervosnetwork/ckb-sdk-rpc" "0.38.2"
-    "@nervosnetwork/ckb-sdk-utils" "0.38.2"
-    "@nervosnetwork/ckb-types" "0.38.2"
+    "@nervosnetwork/ckb-sdk-rpc" "0.41.0"
+    "@nervosnetwork/ckb-sdk-utils" "0.41.0"
+    "@nervosnetwork/ckb-types" "0.41.0"
     tslib "2.0.1"
 
 "@nervosnetwork/ckb-sdk-rpc@0.38.2":
@@ -558,6 +558,15 @@
   dependencies:
     "@nervosnetwork/ckb-sdk-utils" "0.38.2"
     axios "0.19.2"
+    tslib "2.0.1"
+
+"@nervosnetwork/ckb-sdk-rpc@0.41.0":
+  version "0.41.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-rpc/-/ckb-sdk-rpc-0.41.0.tgz#a838452c5a451d739c5e0645a746030ff54e9b53"
+  integrity sha512-z+bGJ6VEgBN1Zf5pVCWr04/kuosbpqLVDoIfxBHAH7Qe9j/syojzoiO6l6unsDkFKq9OKOgDEt8rgQtIU6Vg0g==
+  dependencies:
+    "@nervosnetwork/ckb-sdk-utils" "0.41.0"
+    axios "0.21.1"
     tslib "2.0.1"
 
 "@nervosnetwork/ckb-sdk-utils@0.38.2":
@@ -570,10 +579,25 @@
     jsbi "3.1.3"
     tslib "2.0.1"
 
+"@nervosnetwork/ckb-sdk-utils@0.41.0":
+  version "0.41.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-sdk-utils/-/ckb-sdk-utils-0.41.0.tgz#9092849125f78a36945bb872dea56401dc03a335"
+  integrity sha512-IluOQEuIGMJPJpXG4e2/CAr8u6BxqVCvaFg2Yxerz373Ok57Z/73ODh4VFtFgyUVSIaML8GwTOh0wXujHzG/7Q==
+  dependencies:
+    "@nervosnetwork/ckb-types" "0.41.0"
+    elliptic "6.5.4"
+    jsbi "3.1.3"
+    tslib "2.0.1"
+
 "@nervosnetwork/ckb-types@0.38.2":
   version "0.38.2"
   resolved "https://registry.npmjs.org/@nervosnetwork/ckb-types/-/ckb-types-0.38.2.tgz#2e584c0f3f3ba53d30abe1a0a80493091d92c547"
   integrity sha512-d5oQug8qZGJ188JE5e7baYLER45vVuTkzgEU07dmUxbib3+nDdme1ZK1659329mSDO9u1yRPuhRhu8YXREWOtA==
+
+"@nervosnetwork/ckb-types@0.41.0":
+  version "0.41.0"
+  resolved "https://registry.yarnpkg.com/@nervosnetwork/ckb-types/-/ckb-types-0.41.0.tgz#a7ac21890df8a2b6a9464d8ce53220b9bbaed8f4"
+  integrity sha512-NI1niGGrpwyLBCL9QKKT2mdpUWnU6EXq/UCRiHCJqFE0RzUVHooTYdRpkGuKrZzxCg4JLum1xcVWsr4zdaSfjw==
 
 "@sindresorhus/is@^0.14.0":
   version "0.14.0"
@@ -1191,6 +1215,11 @@ block-stream@*:
   dependencies:
     inherits "~2.0.0"
 
+bn.js@^4.11.9:
+  version "4.12.0"
+  resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-4.12.0.tgz#775b3f278efbb9718eec7361f483fb36fbbfea88"
+  integrity sha512-c98Bf3tPniI+scsdk237ku1Dc3ujXQTSgyiPUDEOe7tRkhrqridvh8klBv0HCEso1OLOYcHuCv/cS6DNxKH+ZA==
+
 bn.js@^4.4.0:
   version "4.11.9"
   resolved "https://registry.npmjs.org/bn.js/-/bn.js-4.11.9.tgz#26d556829458f9d1e81fc48952493d0ba3507828"
@@ -1241,7 +1270,7 @@ braces@^3.0.1, braces@~3.0.2:
   dependencies:
     fill-range "^7.0.1"
 
-brorand@^1.0.1:
+brorand@^1.0.1, brorand@^1.1.0:
   version "1.1.0"
   resolved "https://registry.npmjs.org/brorand/-/brorand-1.1.0.tgz#12c25efe40a45e3c323eb8675a0a0ce57b22371f"
   integrity sha1-EsJe/kCkXjwyPrhnWgoM5XsiNx8=
@@ -1992,6 +2021,19 @@ elliptic@6.5.3:
     minimalistic-assert "^1.0.0"
     minimalistic-crypto-utils "^1.0.0"
 
+elliptic@6.5.4:
+  version "6.5.4"
+  resolved "https://registry.yarnpkg.com/elliptic/-/elliptic-6.5.4.tgz#da37cebd31e79a1367e941b592ed1fbebd58abbb"
+  integrity sha512-iLhC6ULemrljPZb+QutR5TQGB+pdW6KGD5RSegS+8sorOZT+rdQFbsQFJgvN3eRqNALqJer4oQ16YvJHlU8hzQ==
+  dependencies:
+    bn.js "^4.11.9"
+    brorand "^1.1.0"
+    hash.js "^1.0.0"
+    hmac-drbg "^1.0.1"
+    inherits "^2.0.4"
+    minimalistic-assert "^1.0.1"
+    minimalistic-crypto-utils "^1.0.1"
+
 emittery@^0.7.1:
   version "0.7.1"
   resolved "https://registry.npmjs.org/emittery/-/emittery-0.7.1.tgz#c02375a927a40948c0345cc903072597f5270451"
@@ -2681,7 +2723,7 @@ highlight.js@^9.6.0:
   resolved "https://registry.npmjs.org/highlight.js/-/highlight.js-9.18.3.tgz#a1a0a2028d5e3149e2380f8a865ee8516703d634"
   integrity sha512-zBZAmhSupHIl5sITeMqIJnYCDfAEc3Gdkqj65wC1lpI468MMQeeQkhcIAvk+RylAkxrCcI9xy9piHiXeQ1BdzQ==
 
-hmac-drbg@^1.0.0:
+hmac-drbg@^1.0.0, hmac-drbg@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmjs.org/hmac-drbg/-/hmac-drbg-1.0.1.tgz#d2745701025a6c775a6c545793ed502fc0c649a1"
   integrity sha1-0nRXAQJabHdabFRXk+1QL8DGSaE=
@@ -2815,7 +2857,7 @@ inflight@^1.0.4:
     once "^1.3.0"
     wrappy "1"
 
-inherits@2, inherits@^2.0.1, inherits@^2.0.3, inherits@~2.0.0, inherits@~2.0.3:
+inherits@2, inherits@^2.0.1, inherits@^2.0.3, inherits@^2.0.4, inherits@~2.0.0, inherits@~2.0.3:
   version "2.0.4"
   resolved "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz#0fa2c64f932917c3433a0ded55363aae37416b7c"
   integrity sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==
