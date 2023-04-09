@@ -70,7 +70,7 @@
     "socket.io": "2.3.0",
     "sqlite3": "5.0.0",
     "tslib": "2.0.3",
-    "typeorm": "0.2.29",
+    "typeorm": "0.3.14",
     "winston": "3.3.3"
   }
 }
