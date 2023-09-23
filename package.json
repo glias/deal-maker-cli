@@ -40,7 +40,7 @@
     "@ckb-lumos/base": "0.13.2",
     "@types/cron": "1.7.2",
     "@types/jest": "26.0.19",
-    "@types/node": "14.14.16",
+    "@types/node": "14.18.63",
     "@types/socket.io": "2.1.11",
     "cross-env": "7.0.3",
     "fetch-mock": "9.10.7",
