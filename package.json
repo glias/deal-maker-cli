@@ -57,7 +57,7 @@
   "dependencies": {
     "@ckb-lumos/indexer": "0.13.1",
     "@nervosnetwork/ckb-sdk-core": "0.38.2",
-    "@nervosnetwork/ckb-sdk-rpc": "0.38.2",
+    "@nervosnetwork/ckb-sdk-rpc": "0.109.3",
     "@nervosnetwork/ckb-sdk-utils": "0.38.2",
     "axios": "0.21.1",
     "bignumber.js": "^9.0.1",
